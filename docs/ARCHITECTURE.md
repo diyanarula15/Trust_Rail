@@ -17,7 +17,7 @@ graph TB
     end
 
     subgraph Backend["FastAPI"]
-        VerifyAPI["api/verify.py\nPOST /api/verify"]
+        VerifyAPI["api/verify.py\nPOST /api/verify\nPOST /api/verify/stream (SSE)\nboth drain one _run_verification()"]
         IssuerAPI["api/issuer.py\ndraft/sign/cosign/publish/revoke"]
         LogAPI["api/log.py\nroot/entries/proof"]
         RegistryAPI["api/registry.py"]
@@ -31,6 +31,7 @@ graph TB
             Risk["risk.py"]
             EmailCheck["emailcheck.py"]
             Verdict["verdict.py: decide()\n§20 no VERIFIED without proof guardrail"]
+            Evidence["evidence.py: build_match_evidence()\nexplains the match, never decides it"]
         end
 
         subgraph Trust["trust/"]
@@ -47,7 +48,9 @@ graph TB
         VerifyAPI --> Risk
         VerifyAPI --> EmailCheck
         VerifyAPI --> Verdict
+        VerifyAPI --> Evidence
         Verdict --> Render
+        Evidence --> Render
         IssuerAPI --> Envelope --> Merkle
         IssuerAPI --> Revocation --> Merkle
         LogAPI --> Merkle
@@ -129,6 +132,9 @@ sequenceDiagram
 | Transparency log | **Real** | RFC 6962 leaf/node hashing, RFC 9162 inclusion-proof verification, mirrored independently in Python and TypeScript |
 | Perceptual/content hashing | **Real** | `imagehash.phash`, own SimHash64 implementation, ffmpeg frame extraction |
 | Client-side proof verification | **Real** | `frontend/src/lib/merkle.ts` re-derives the root from the leaf and audit path itself, so it doesn't just trust a server-reported boolean |
+| Live stage streaming | **Real** | Stages are emitted as the server genuinely finishes them, and reported durations are real measurements (video `reading` ≈ 1067ms vs image ≈ 3ms, same code path). The client puts a floor on how fast rows *appear* so a 40ms pipeline is readable; it never fabricates progress or timings |
+| Plain-language copy | **Real, and localized** | Both registers live in `i18n/{en,hi}.json` and are produced by `channels/render.py`, so §12.1 holds: the frontend renders wording, never invents it |
+| Match evidence panel | **Real** | `pipeline/evidence.py` reports the actual hashes, bit distances and thresholds the match was decided on. The 8x8 grid is the phash64 itself (flattened DCT-sign bits), not an illustration of it. Explanation-only: `TestEvidenceDoesNotAffectDecisions` asserts verdicts are identical with and without it |
 | Rule-based claim/risk detection | **Real** | Regex + rapidfuzz + Levenshtein, not a black box |
 | PDQ perceptual hash, C2PA embed/read | **Optional, absent by default** | Wrapped in try/except; core path works without either |
 | LLM-assisted claim extraction | **Optional, off by default** | `LLM_ENABLED` flag; rule-based path is the required baseline and what's actually exercised in this build |

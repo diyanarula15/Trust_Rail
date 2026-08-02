@@ -97,6 +97,17 @@ class RegistryMatch(BaseModel):
     candidate: Candidate | None = None
     detail: str = ""
 
+    # --- explanation only, never read by decide() ---
+    # The closest thing the sweep saw, even when nothing crossed a threshold,
+    # so the UI can say "closest registered item was 31 of 64 bits away"
+    # instead of a bare "no match". Populated on near/miss results; on a hit
+    # the matched `candidate` above is the closest by definition.
+    closest: Candidate | None = None
+    closest_algorithm: str | None = None
+    closest_distance: int | None = None
+    closest_bits: int | None = None
+    closest_video_ratio: float | None = None
+
 
 class DecisionInput(BaseModel):
     envelope_result: EnvelopeResult | None = None
@@ -131,27 +142,54 @@ def match_registry(
             return RegistryMatch(kind="exact", candidate=c, detail="sha256 exact")
 
     best_near: RegistryMatch = RegistryMatch()
+    # closest-seen tracking is explanation-only (see RegistryMatch) — it never
+    # changes which branch below fires. Compared on normalized distance so a
+    # pdq256 miss doesn't outrank a phash64 one purely on bit width.
+    closest: tuple[float, int, int, str, Candidate] | None = None
+    closest_video: tuple[float, Candidate] | None = None
+
+    def note(dist: int, bits: int, algorithm: str, cand: Candidate) -> None:
+        nonlocal closest
+        if closest is None or dist / bits < closest[0]:
+            closest = (dist / bits, dist, bits, algorithm, cand)
+
     for c in candidates:
         if q.phash64 and c.phash64:
             d = hamming_hex(q.phash64, c.phash64)
+            note(d, 64, "phash64", c)
             if d <= t.phash_match_max_dist:
                 return RegistryMatch(kind="phash", candidate=c, detail=f"phash dist {d}")
             if d <= t.phash_near_max_dist and best_near.kind == "none":
                 best_near = RegistryMatch(kind="near", candidate=c, detail=f"phash near, dist {d}")
         if q.pdq256 and c.pdq256:
             d = hamming_hex(q.pdq256, c.pdq256)
+            note(d, 256, "pdq256", c)
             if d <= t.pdq_match_max_dist:
                 return RegistryMatch(kind="pdq", candidate=c, detail=f"pdq dist {d}")
         if q.simhash64 and c.simhash64:
             d = hamming_hex(q.simhash64, c.simhash64)
+            note(d, 64, "simhash64", c)
             if d <= t.simhash_match_max_dist:
                 return RegistryMatch(kind="simhash", candidate=c, detail=f"simhash dist {d}")
         if q.video_frame_hashes and c.video_frame_hashes:
             ratio = video_match_ratio(
                 q.video_frame_hashes, c.video_frame_hashes, t.phash_match_max_dist
             )
+            if closest_video is None or ratio > closest_video[0]:
+                closest_video = (ratio, c)
             if ratio >= t.video_frame_match_ratio:
                 return RegistryMatch(kind="video", candidate=c, detail=f"frame ratio {ratio:.2f}")
+
+    if closest is not None:
+        _, dist, bits, algorithm, cand = closest
+        best_near.closest = cand
+        best_near.closest_algorithm = algorithm
+        best_near.closest_distance = dist
+        best_near.closest_bits = bits
+    if closest_video is not None:
+        best_near.closest_video_ratio = closest_video[0]
+        if best_near.closest is None:
+            best_near.closest = closest_video[1]
     return best_near
 
 

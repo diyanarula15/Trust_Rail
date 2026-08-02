@@ -25,10 +25,115 @@
     "sebi_check": "Before paying anyone, verify the payee on SEBI Check.",
     "radar_added": "Added to the fraud radar."
   },
+  "plain": {
+    "verdict": {
+      "verified": {
+        "title": "Yes, this is genuine",
+        "body": "{entity} really did publish this. We matched it against their own official record, so you are looking at the real thing."
+      },
+      "verified_notice": {
+        "title": "Genuine, but check before you act",
+        "body": "{entity} did publish this. Since then the digital key used to sign it was reported stolen, so confirm on their official app or website before acting on it."
+      },
+      "official_claim_unverified": {
+        "title": "We cannot confirm this",
+        "body": "This says it comes from {claimed}, but nothing they have officially published matches it. Treat it as unsafe until you check with them directly."
+      },
+      "likely_fake": {
+        "title": "This looks like a scam",
+        "body": "{top_reason} Do not pay anyone, and do not share any code or password because of this message."
+      },
+      "informational": {
+        "title": "Nothing official here",
+        "body": "This does not claim to come from any registered company or regulator. Nothing to verify. Stay alert for anyone promising guaranteed profits."
+      }
+    },
+    "reasons": {
+      "SIG_CHAIN_VALID": "It carries a valid digital signature from the company.",
+      "C2PA_VALID": "It carries valid built-in content credentials.",
+      "C2PA_MISSING": "It had no built-in content credentials, which is normal for a forwarded file.",
+      "C2PA_INVALID": "Its built-in content credentials did not check out.",
+      "TAMPERED_SIGNATURE": "Its digital signature does not check out.",
+      "TAMPERED_CONTENT": "It points at a specific official notice, but the content does not match that notice.",
+      "KEY_REVOKED_AFTER_SIGNING": "The signing key was reported stolen after this was published.",
+      "HASH_EXACT_MATCH": "It is exactly the file the company published.",
+      "PHASH_MATCH": "It is the same picture the company published.",
+      "PDQ_MATCH": "It is the same picture the company published.",
+      "SIMHASH_MATCH": "It is the same message the company published.",
+      "VIDEO_MATCH": "It is the same video the company published.",
+      "PHASH_NEAR": "It looks close to something official, but not close enough. It may be an edited copy.",
+      "COMM_WITHDRAWN": "The company has since withdrawn this notice.",
+      "ENTITY_CLAIM_STRONG": "It names a real registered company.",
+      "ENTITY_CLAIM_WEAK": "It uses official sounding language without naming anyone.",
+      "HOMOGLYPH_ENTITY": "The company name is spelled with look-alike letters to imitate the real one.",
+      "LOOKALIKE_DOMAIN": "The web address is a near copy of a real company's address.",
+      "DOMAIN_REGISTERED": "The web address really does belong to the company named.",
+      "DOMAIN_NOT_REGISTERED": "The web address does not belong to any registered company.",
+      "DKIM_ALIGN_PASS": "The email really was sent by the domain it claims.",
+      "DKIM_ALIGN_FAIL": "The email was not sent by the domain it claims.",
+      "AUTH_HEADERS_UNAVAILABLE": "This was forwarded, so the original email proof no longer travels with it.",
+      "BLACKLIST_MATCH": "It matches a scam campaign already being tracked.",
+      "RISK_PHRASES": "It uses language common in investment scams.",
+      "PAYMENT_ASK": "It asks you to send money directly.",
+      "URL_RISK": "It contains a suspicious link.",
+      "NO_OFFICIAL_CLAIM": "It does not claim to be from anyone official."
+    }
+  },
+  "live": {
+    "stages": {
+      "reading": "Opening what you sent",
+      "signature": "Looking for an official digital signature",
+      "registry": "Comparing it with everything issuers have published",
+      "risk": "Checking for scam warning signs"
+    },
+    "details": {
+      "reading_image": "Picture opened and fingerprinted",
+      "reading_video": "Video opened, frames sampled and fingerprinted",
+      "reading_pdf": "Document opened and its wording fingerprinted",
+      "reading_text": "Message read and fingerprinted",
+      "reading_eml": "Email opened, sender and links read",
+      "reading_url": "Link read",
+      "signature_none": "No signature travelled with this file. Forwarding strips it, which is why the next step matters.",
+      "signature_valid": "Valid signature found",
+      "signature_invalid": "A signature was present but did not check out",
+      "registry_match": "Matched something an issuer really published",
+      "registry_near": "Found something similar, but not close enough to call a match",
+      "registry_none": "Nothing an issuer has published matches this",
+      "risk_clean": "No scam signals found",
+      "risk_flags": "Found {n} warning sign(s)"
+    }
+  },
   "button": {
     "view_certificate": "View certificate",
     "sebi_check": "Verify payee on SEBI Check",
     "expand_trace": "How this was checked"
+  },
+  "evidence": {
+    "title": "How this was matched",
+    "submitted_label": "What you sent",
+    "registered_label": "What the issuer published",
+    "sha_label": "Byte hash (SHA-256)",
+    "sha_identical": "Byte-for-byte identical to the published file.",
+    "sha_differs": "Completely different. Re-encoding rewrites every byte, so exact hashing alone would have missed this.",
+    "fingerprint_label": "Perceptual fingerprint",
+    "fingerprint_summary": "{distance} of {bits} bits differ.",
+    "fingerprint_video": "Compared frame by frame rather than as a single image.",
+    "fingerprint_none": "No perceptual fingerprint was compared for this input.",
+    "scale_match": "At or below {threshold} differing bits means the same content survived re-encoding, so this counts as a match.",
+    "scale_near": "Close, but past the {threshold}-bit match line. Treated as a possible altered copy, not a match.",
+    "scale_miss": "Well past the {threshold}-bit match line, so this is not the published content.",
+    "frames_summary": "{matched} of {total} sampled frames matched ({percent}%). {threshold}% is the bar for a video match.",
+    "plain_title": "What we compared",
+    "plain_file_changed": "The file was changed",
+    "plain_file_same": "The file is untouched",
+    "plain_content_same": "What it shows is unchanged",
+    "plain_content_close": "What it shows is nearly the same",
+    "plain_content_different": "What it shows is different",
+    "plain_explain_match": "Apps like WhatsApp re-save a photo when you forward it. That rewrites the file completely, but it does not change what the picture actually looks like. We compare what it looks like, which is why a forwarded copy still checks out.",
+    "plain_explain_near": "This is close to something official, but not close enough to call the same. An edited copy of a real notice would look exactly like this, so we do not call it verified.",
+    "plain_explain_miss": "We compared it against every picture issuers have published. The closest one still looks clearly different, so this is not one of theirs.",
+    "plain_explain_video": "We sample frames through the video and compare each one, so a re-encoded or re-uploaded copy still matches.",
+    "technical_toggle": "Show the technical detail"
   },
   "reasons": {
     "SIG_CHAIN_VALID": "Digital signature chain is valid and the signing key was active at the time.",

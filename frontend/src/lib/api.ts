@@ -41,11 +41,65 @@ export interface TraceStep {
   ms: number;
 }
 
+export interface HashComparison {
+  algorithm: "phash64" | "pdq256" | "simhash64";
+  bits: number;
+  query_hex: string;
+  registered_hex: string;
+  distance: number;
+  differing_bits: number[];
+  threshold_match: number;
+  threshold_near: number | null;
+}
+
+export interface VideoComparison {
+  frame_distances: number[];
+  frame_max_distance: number;
+  matched_frames: number;
+  total_frames: number;
+  ratio: number;
+  threshold_ratio: number;
+}
+
+export interface MatchEvidence {
+  outcome: "match" | "near" | "miss";
+  kind: string;
+  query_sha256: string | null;
+  registered_sha256: string | null;
+  sha256_identical: boolean;
+  hash_comparison: HashComparison | null;
+  video_comparison: VideoComparison | null;
+  registered_communication_id: string | null;
+}
+
+/** Localized sentences for the evidence panel — numbers already interpolated
+ * server-side, so the component renders wording it never invents (spec §12.1). */
+export interface EvidenceCopy {
+  title: string;
+  submitted_label: string;
+  registered_label: string;
+  sha_label: string;
+  sha_summary: string;
+  fingerprint_label: string;
+  fingerprint_summary: string;
+  scale_summary: string | null;
+  frames_summary: string | null;
+  plain_title: string;
+  plain_file_line: string;
+  plain_content_line: string;
+  plain_explain: string;
+  technical_toggle: string;
+}
+
 export interface CardPayload {
   verification_id: string;
   verdict: string;
   headline: string;
   body: string;
+  /** Plain-language register for a non-specialist. Same verdict, no jargon. */
+  plain_headline: string;
+  plain_body: string;
+  plain_reason_strings: string[];
   reasons: string[];
   reason_strings: string[];
   advice: string[];
@@ -54,7 +108,15 @@ export interface CardPayload {
   matched_communication: CommunicationRef | null;
   claimed_entity_text: string | null;
   pipeline_trace: TraceStep[];
+  match_evidence: MatchEvidence | null;
+  evidence_copy: EvidenceCopy | null;
   locale: string;
+}
+
+/** Preview of a *published* artifact, for the registered side of the
+ * comparison. 404s for drafts and non-images — callers hide the panel. */
+export function artifactPreviewUrl(sha256: string): string {
+  return `${API_BASE_URL}/api/artifacts/${sha256}/preview`;
 }
 
 export interface CertificatePayload {
@@ -119,6 +181,91 @@ export async function verifySubmit(
     body: form,
   });
   return res.json();
+}
+
+export interface StageEvent {
+  stage: "reading" | "signature" | "registry" | "risk";
+  label: string;
+  detail: string;
+  outcome: string | null;
+  /** Real measured duration of this stage on the server, not a paced value. */
+  ms: number;
+}
+
+/** The four stages the server reports, in order. Known up front so the UI can
+ * show what is *about* to be checked, greyed out, rather than popping rows in
+ * from nowhere. */
+export const VERIFY_STAGES: StageEvent["stage"][] = [
+  "reading",
+  "signature",
+  "registry",
+  "risk",
+];
+
+/**
+ * Streams a verification, calling `onStage` as each stage genuinely completes
+ * on the server. Falls back to nothing special on error — the caller decides.
+ *
+ * Uses fetch + ReadableStream rather than EventSource because this is a POST
+ * with a file body, which EventSource cannot do.
+ */
+export async function verifyStream(
+  input: VerifyInput,
+  handlers: {
+    onStage?: (stage: StageEvent) => void;
+    onResult?: (card: CardPayload) => void;
+    onError?: (error: ApiError) => void;
+  }
+): Promise<void> {
+  const form = new FormData();
+  if (input.file) form.append("file", input.file);
+  if (input.text !== undefined) form.append("text", input.text);
+  if (input.url !== undefined) form.append("url", input.url);
+  if (input.claimedSenderText) form.append("claimed_sender_text", input.claimedSenderText);
+  if (input.stateCode) form.append("state_code", input.stateCode);
+  form.append("locale", input.locale ?? "en");
+  form.append("channel", input.channel ?? "sim");
+
+  const res = await fetch(`${API_BASE_URL}/api/verify/stream`, {
+    method: "POST",
+    body: form,
+  });
+
+  // Guard rails (rate limit, bad input) come back as a normal JSON error.
+  if (!res.ok || !res.body || !res.headers.get("content-type")?.includes("event-stream")) {
+    const body = (await res.json().catch(() => null)) as ApiResponse<never> | null;
+    handlers.onError?.(
+      body?.error ?? { code: "stream_failed", message: "Could not reach the server." }
+    );
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are separated by a blank line; keep any partial tail.
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    for (const frame of frames) {
+      const line = frame.split("\n").find((l) => l.startsWith("data: "));
+      if (!line) continue;
+      try {
+        const event = JSON.parse(line.slice(6));
+        if (event.type === "stage") handlers.onStage?.(event.payload as StageEvent);
+        else if (event.type === "result") handlers.onResult?.(event.payload as CardPayload);
+        else if (event.type === "error") handlers.onError?.(event.payload.error as ApiError);
+      } catch {
+        // a malformed frame shouldn't kill the rest of the stream
+      }
+    }
+  }
 }
 
 export async function getVerification(

@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.pipeline.evidence import MatchEvidence
 from app.pipeline.verdict import Decision, ReasonCode, Verdict
 
 _I18N_DIR = Path(__file__).resolve().parents[1] / "i18n"
@@ -65,11 +66,41 @@ class Button(BaseModel):
     url: str
 
 
+class EvidenceCopy(BaseModel):
+    """Localized sentences for the match-evidence panel. The numbers are
+    already interpolated here so the frontend renders strings and shapes,
+    never wording of its own (spec §12.1)."""
+
+    title: str
+    submitted_label: str
+    registered_label: str
+    sha_label: str
+    sha_summary: str
+    fingerprint_label: str
+    fingerprint_summary: str
+    scale_summary: str | None = None
+    frames_summary: str | None = None
+
+    # plain register — the two-line headline a non-specialist reads first
+    plain_title: str = ""
+    plain_file_line: str = ""
+    plain_content_line: str = ""
+    plain_explain: str = ""
+    technical_toggle: str = ""
+
+
 class CardPayload(BaseModel):
     verification_id: str
     verdict: str
     headline: str
     body: str
+    # Plain-language register for a non-specialist reader. Same verdict, same
+    # facts, no jargon — the card leads with these and keeps the formal
+    # strings above for the technical view (spec §12.1: both come from i18n,
+    # neither is invented in the frontend).
+    plain_headline: str = ""
+    plain_body: str = ""
+    plain_reason_strings: list[str] = []
     reasons: list[str]
     reason_strings: list[str]
     advice: list[str]
@@ -78,6 +109,8 @@ class CardPayload(BaseModel):
     matched_communication: CommunicationRef | None = None
     claimed_entity_text: str | None = None
     pipeline_trace: list[dict[str, Any]]
+    match_evidence: MatchEvidence | None = None
+    evidence_copy: EvidenceCopy | None = None
     locale: str
 
 
@@ -95,10 +128,153 @@ class RenderContext(BaseModel):
     revoked_date: str | None = None
     certificate_url: str | None = None
     sebi_check_url: str = "#"
+    match_evidence: MatchEvidence | None = None
+
+
+class _Defaulting(dict):
+    """Missing placeholders render as an em dash rather than raising."""
+
+    def __missing__(self, key: str) -> str:
+        return "—"
 
 
 def _reason_string(strings: dict[str, Any], code: str) -> str:
     return strings.get("reasons", {}).get(code, code)
+
+
+# Codes that carry nothing for a lay reader and are dropped from the plain
+# list (never from `reasons`/`reason_strings`, which stay complete for the
+# technical view and for any downstream consumer).
+#   C2PA_MISSING     — an absence of an optional feature, true on essentially
+#                      every forwarded file, and it led every card.
+#   NO_OFFICIAL_CLAIM — the plain body already says exactly this.
+_PLAIN_SUPPRESSED = {ReasonCode.C2PA_MISSING, ReasonCode.NO_OFFICIAL_CLAIM}
+
+
+# Reading order for the plain list. Distinct from _TOP_REASON_PRIORITY, which
+# ranks by alarm to pick LIKELY_FAKE's {top_reason}: here a caveat the reader
+# must act on (a revoked key) has to outrank the match that proved authenticity,
+# even though the match is the more "positive" finding.
+_PLAIN_REASON_ORDER = [
+    ReasonCode.BLACKLIST_MATCH,
+    ReasonCode.LOOKALIKE_DOMAIN,
+    ReasonCode.HOMOGLYPH_ENTITY,
+    ReasonCode.TAMPERED_SIGNATURE,
+    ReasonCode.TAMPERED_CONTENT,
+    ReasonCode.KEY_REVOKED_AFTER_SIGNING,
+    ReasonCode.COMM_WITHDRAWN,
+    ReasonCode.PAYMENT_ASK,
+    ReasonCode.RISK_PHRASES,
+    ReasonCode.URL_RISK,
+    ReasonCode.SIG_CHAIN_VALID,
+    ReasonCode.HASH_EXACT_MATCH,
+    ReasonCode.PHASH_MATCH,
+    ReasonCode.PDQ_MATCH,
+    ReasonCode.SIMHASH_MATCH,
+    ReasonCode.VIDEO_MATCH,
+    ReasonCode.PHASH_NEAR,
+]
+
+
+def _plain_reasons(strings: dict[str, Any], codes: list[str]) -> list[str]:
+    """Plain reason lines, most significant first, noise removed."""
+    suppressed = {r.value for r in _PLAIN_SUPPRESSED}
+    priority = {code.value: i for i, code in enumerate(_PLAIN_REASON_ORDER)}
+    kept = sorted(
+        (c for c in codes if c not in suppressed),
+        key=lambda c: priority.get(c, len(priority)),
+    )
+    return [_plain_reason_string(strings, c) for c in kept]
+
+
+def _plain_reason_string(strings: dict[str, Any], code: str) -> str:
+    """Plain wording, falling back to the formal string, then the bare code —
+    so a locale that hasn't translated a code yet degrades instead of leaking
+    an enum name."""
+    plain = strings.get("plain", {}).get("reasons", {}).get(code)
+    return plain if plain else _reason_string(strings, code)
+
+
+def stage_copy(locale: str, stage: str, detail_key: str | None = None, **fmt: Any) -> tuple[str, str]:
+    """Localized (label, detail) for one live-check stage. Lives here because
+    §12.1 makes this module the only place machine outcomes become words."""
+    live = _load(locale).get("live", {})
+    label = live.get("stages", {}).get(stage, stage)
+    detail = live.get("details", {}).get(detail_key or "", "")
+    if detail and fmt:
+        detail = detail.format_map(_Defaulting(fmt))
+    return label, detail
+
+
+def _evidence_copy(strings: dict[str, Any], ev: MatchEvidence) -> EvidenceCopy | None:
+    """Localized sentences describing `ev`, with the real numbers filled in."""
+    block = strings.get("evidence")
+    if not block:
+        return None
+
+    sha_summary = block["sha_identical"] if ev.sha256_identical else block["sha_differs"]
+
+    fingerprint_summary = block["fingerprint_none"]
+    scale_summary = None
+    if ev.hash_comparison is not None:
+        hc = ev.hash_comparison
+        fingerprint_summary = block["fingerprint_summary"].format_map(
+            _Defaulting({"distance": hc.distance, "bits": hc.bits})
+        )
+        key = {"match": "scale_match", "near": "scale_near", "miss": "scale_miss"}[ev.outcome]
+        scale_summary = block[key].format_map(
+            _Defaulting({"threshold": hc.threshold_match, "near": hc.threshold_near or ""})
+        )
+
+    frames_summary = None
+    if ev.video_comparison is not None:
+        vc = ev.video_comparison
+        frames_summary = block["frames_summary"].format_map(
+            _Defaulting({
+                "matched": vc.matched_frames,
+                "total": vc.total_frames,
+                "percent": round(vc.ratio * 100),
+                "threshold": round(vc.threshold_ratio * 100),
+            })
+        )
+        if ev.hash_comparison is None:
+            fingerprint_summary = block["fingerprint_video"]
+
+    # The plain register reduces the whole comparison to the one sentence that
+    # actually explains perceptual matching: the file changed, the content
+    # didn't. Everything numeric stays available behind the technical toggle.
+    content_line = {
+        "match": block["plain_content_same"],
+        "near": block["plain_content_close"],
+        "miss": block["plain_content_different"],
+    }[ev.outcome]
+    if ev.video_comparison is not None and ev.hash_comparison is None:
+        plain_explain = block["plain_explain_video"]
+    else:
+        plain_explain = {
+            "match": block["plain_explain_match"],
+            "near": block["plain_explain_near"],
+            "miss": block["plain_explain_miss"],
+        }[ev.outcome]
+
+    return EvidenceCopy(
+        title=block["title"],
+        submitted_label=block["submitted_label"],
+        registered_label=block["registered_label"],
+        sha_label=block["sha_label"],
+        sha_summary=sha_summary,
+        fingerprint_label=block["fingerprint_label"],
+        fingerprint_summary=fingerprint_summary,
+        scale_summary=scale_summary,
+        frames_summary=frames_summary,
+        plain_title=block["plain_title"],
+        plain_file_line=(
+            block["plain_file_same"] if ev.sha256_identical else block["plain_file_changed"]
+        ),
+        plain_content_line=content_line,
+        plain_explain=plain_explain,
+        technical_toggle=block["technical_toggle"],
+    )
 
 
 def render_verdict(ctx: RenderContext) -> CardPayload:
@@ -108,13 +284,15 @@ def render_verdict(ctx: RenderContext) -> CardPayload:
     reason_strings = [_reason_string(strings, code) for code in reason_values]
 
     v = strings["verdict"][_VERDICT_KEY[d.verdict]]
+    plain_v = strings.get("plain", {}).get("verdict", {}).get(_VERDICT_KEY[d.verdict], {})
 
     fmt: dict[str, Any] = {}
     if ctx.matched_entity is not None:
         fmt["entity"] = ctx.matched_entity.name
         fmt["reg"] = ctx.matched_entity.sebi_reg_no
     if ctx.matched_communication is not None:
-        fmt["date"] = ctx.matched_communication.published_at or ""
+        # date only — the raw ISO timestamp reads as machine output on a card
+        fmt["date"] = (ctx.matched_communication.published_at or "")[:10]
         fmt["channel"] = ctx.matched_communication.channel or ""
         fmt["seq"] = ctx.matched_communication.log_seq
     if ctx.claimed_entity_text:
@@ -124,19 +302,22 @@ def render_verdict(ctx: RenderContext) -> CardPayload:
     if ctx.revoked_date:
         fmt["revoked_date"] = ctx.revoked_date
 
-    top_reason = ""
-    for code in _TOP_REASON_PRIORITY:
-        if code in d.reasons:
-            top_reason = _reason_string(strings, code.value)
-            break
+    top_code = next((c for c in _TOP_REASON_PRIORITY if c in d.reasons), None)
+    top_reason = _reason_string(strings, top_code.value) if top_code else ""
     if not top_reason and reason_strings:
         top_reason = reason_strings[0]
     fmt["top_reason"] = top_reason
 
-    try:
-        body = v["body"].format(**fmt)
-    except (KeyError, IndexError):
-        body = v["body"]
+    # the plain body interpolates the plain wording of the same top reason
+    plain_fmt = dict(fmt)
+    plain_top = _plain_reason_string(strings, top_code.value) if top_code else ""
+    plain_fmt["top_reason"] = plain_top or top_reason
+
+    # format_map over a defaulting dict, not .format(**fmt): a placeholder the
+    # caller didn't populate used to raise KeyError and fall back to the RAW
+    # template, printing literal "{entity}"/"{revoked_date}" braces at the
+    # user. Degrade one placeholder instead of wrecking the whole sentence.
+    body = v["body"].format_map(_Defaulting(fmt))
 
     advice: list[str] = []
     buttons: list[Button] = []
@@ -164,6 +345,11 @@ def render_verdict(ctx: RenderContext) -> CardPayload:
         verdict=d.verdict.value,
         headline=v["title"],
         body=body,
+        plain_headline=plain_v.get("title", v["title"]),
+        plain_body=(
+            plain_v["body"].format_map(_Defaulting(plain_fmt)) if plain_v.get("body") else body
+        ),
+        plain_reason_strings=_plain_reasons(strings, reason_values),
         reasons=reason_values,
         reason_strings=reason_strings,
         advice=advice,
@@ -172,5 +358,11 @@ def render_verdict(ctx: RenderContext) -> CardPayload:
         matched_communication=ctx.matched_communication,
         claimed_entity_text=ctx.claimed_entity_text,
         pipeline_trace=[t.model_dump() for t in d.trace],
+        match_evidence=ctx.match_evidence,
+        evidence_copy=(
+            _evidence_copy(strings, ctx.match_evidence)
+            if ctx.match_evidence is not None
+            else None
+        ),
         locale=ctx.locale,
     )

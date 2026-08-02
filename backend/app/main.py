@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis import Redis
 from sqlalchemy import text
 
+from app.api.artifacts import router as artifacts_router
 from app.api.issuer import router as issuer_router
 from app.api.log import router as log_router
 from app.api.registry import router as registry_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(verify_router)
     app.include_router(tokens_router)
     app.include_router(telemetry_router)
+    app.include_router(artifacts_router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:

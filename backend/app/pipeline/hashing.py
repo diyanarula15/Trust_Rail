@@ -51,6 +51,19 @@ def hamming_hex(a: str, b: str) -> int:
     return bin(int(a, 16) ^ int(b, 16)).count("1")
 
 
+def differing_bit_indices(a: str, b: str) -> list[int]:
+    """Which bit positions differ, MSB-first (index 0 = most significant).
+
+    Same ordering as `bin(int(h, 16))[2:].zfill(n)`, which for a phash64 is
+    imagehash's flattened 8x8 DCT-sign array in row-major order — so index i
+    is grid cell (i // 8, i % 8). Used only to explain a match, never to
+    decide one.
+    """
+    n = len(a) * 4
+    x = int(a, 16) ^ int(b, 16)
+    return [i for i in range(n) if (x >> (n - 1 - i)) & 1]
+
+
 def normalize_text(text: str) -> str:
     """NFKC, strip zero-width + emoji/symbols, lowercase, collapse whitespace
     (spec §8.2; §16.1 requires stability under emoji injection)."""
@@ -91,3 +104,15 @@ def video_match_ratio(query_frames: list[str], registered_frames: list[str], max
         if any(hamming_hex(q, r) <= max_dist for r in registered_frames)
     )
     return hits / len(query_frames)
+
+
+def video_frame_distances(query_frames: list[str], registered_frames: list[str]) -> list[int]:
+    """Per query frame, the closest distance to ANY registered frame.
+
+    The per-frame view behind `video_match_ratio`'s single number — same
+    comparison, kept separate so the ratio used for the verdict stays the
+    one tested in Epic 4.
+    """
+    if not query_frames or not registered_frames:
+        return []
+    return [min(hamming_hex(q, r) for r in registered_frames) for q in query_frames]

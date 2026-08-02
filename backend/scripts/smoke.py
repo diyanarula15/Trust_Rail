@@ -124,6 +124,17 @@ def main() -> None:
     )
 
     print("SMOKE PASS")
+    # This script wipes the demo world to build its own fixtures, and leaves
+    # those behind. Silently doing so has cost real debugging time more than
+    # once (see PROGRESS.md, Epic 5 and the match-evidence entry): the next
+    # /verify against a wiped registry honestly returns "no match", which
+    # reads exactly like a broken matcher. Say so loudly instead.
+    print()
+    print("!" * 72)
+    print("The demo world has been REPLACED by smoke fixtures.")
+    print("Before demoing or checking /verify by hand, restore it:")
+    print("    python -m scripts.seed          (or: make demo-reset)")
+    print("!" * 72)
 
 
 if __name__ == "__main__":

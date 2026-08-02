@@ -19,22 +19,31 @@ VERIFIED to VERIFIED_NOTICE on the next re-verification (the demo's key-
 compromise moment) without touching Epic 4's tested `decide()` logic.
 """
 import io
+import json
+import logging
 import re
 import tempfile
 import time
 import uuid
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.channels.render import CommunicationRef, EntityRef, RenderContext, render_verdict
+from app.channels.render import (
+    CommunicationRef,
+    EntityRef,
+    RenderContext,
+    render_verdict,
+    stage_copy,
+)
 from app.config import get_settings
-from app.db import get_db, get_redis
+from app.db import SessionLocal, get_db, get_redis
 from app.models import (
     Communication,
     CommStatus,
@@ -50,6 +59,7 @@ from app.models import (
 )
 from app.pipeline import hashing, media
 from app.pipeline.claims import extract_claim, load_entity_refs
+from app.pipeline.evidence import MatchEvidence, build_match_evidence
 from app.pipeline.emailcheck import EmailParsed, email_reason_codes, parse_eml
 from app.pipeline.ingest import IngestError, IngestResult, ingest_file, ingest_text, ingest_url
 from app.pipeline.risk import BlacklistRef, RiskSignal, analyze_risk
@@ -67,6 +77,7 @@ from app.pipeline.verdict import (
 from app.schemas import err, ok
 
 router = APIRouter(prefix="/api", tags=["verify"])
+logger = logging.getLogger(__name__)
 
 _CERT_LINK_RE = re.compile(r"/c/([A-Za-z0-9]+)")
 
@@ -202,6 +213,22 @@ def _downgrade_if_key_revoked(db: Session, decision: Decision) -> Decision:
     return decision
 
 
+def _revoked_key_date(db: Session, decision: Decision) -> str | None:
+    """Date the matched communication's signing key was revoked, for the
+    VERIFIED_NOTICE card's {revoked_date}. Earliest of maker/checker if both
+    are revoked — that's when the content stopped being fully trustworthy."""
+    if decision.matched_communication_id is None:
+        return None
+    comm = db.get(Communication, decision.matched_communication_id)
+    if comm is None:
+        return None
+    keys = [db.get(Key, comm.maker_key_id)]
+    if comm.checker_key_id:
+        keys.append(db.get(Key, comm.checker_key_id))
+    dates = [k.revoked_at for k in keys if k is not None and k.revoked_at is not None]
+    return min(dates).date().isoformat() if dates else None
+
+
 def _referenced_comm_sha256(db: Session, text: str) -> str | None:
     """TAMPERED_CONTENT support: input pastes a certificate link for a
     specific communication but the submitted content doesn't match it."""
@@ -254,53 +281,78 @@ def _issue_certificate_token(db: Session, verification_id: uuid.UUID) -> ViewTok
     return token
 
 
-@router.post("/verify")
-async def verify(
-    request: Request,
-    file: UploadFile | None = None,
-    text: str | None = Form(None),
-    url: str | None = Form(None),
-    claimed_sender_text: str | None = Form(None),
-    state_code: str | None = Form(None),
-    locale: str | None = Form(None),
-    channel: VerifyChannel = Form(VerifyChannel.sim),
-    db: Session = Depends(get_db),
-):
+def _run_verification(
+    db: Session,
+    ingest_result: IngestResult,
+    *,
+    claimed_sender_text: str | None,
+    state_code: str | None,
+    channel: VerifyChannel,
+    locale: str,
+) -> Iterator[tuple[str, dict]]:
+    """The pipeline, as a sequence of observable stages.
+
+    Yields ("stage", {...}) as each stage genuinely completes, then
+    ("result", card). `POST /verify` drains this and returns only the card,
+    so its contract is unchanged; `/verify/stream` forwards the stages as
+    they happen. One code path, so the streamed run and the plain run can
+    never drift apart.
+
+    The stage order here follows `decide()`'s logical order (signature, then
+    registry, then claims/risk) rather than the order the values happen to
+    be computed in — claims and risk are independent of the registry sweep,
+    so running them after it changes nothing but reads correctly live.
+    """
     settings = get_settings()
-    redis = get_redis()
-    ip = request.client.host if request.client else "unknown"
-    try:
-        allowed, retry_after = _rate_limit(redis, ip, settings.verify_rate_limit_per_min)
-    except Exception:
-        allowed, retry_after = True, 0  # rate limiting is best-effort, never blocks the demo
-    if not allowed:
-        return JSONResponse(
-            status_code=429,
-            content=err("rate_limited", f"Too many requests. Retry in {retry_after}s."),
-            headers={"Retry-After": str(retry_after)},
-        )
+    t_start = time.monotonic()
 
-    if sum(x is not None for x in (file, text, url)) != 1:
-        return _bad(422, "bad_input", "Provide exactly one of file, text, or url.")
+    def stage(name: str, t0: float, detail_key: str | None = None, outcome: str | None = None,
+              **fmt) -> tuple[str, dict]:
+        label, detail = stage_copy(locale, name, detail_key, **fmt)
+        return ("stage", {
+            "stage": name,
+            "label": label,
+            "detail": detail,
+            "outcome": outcome,
+            "ms": int((time.monotonic() - t0) * 1000),
+        })
 
+    # ---- stage 1: read + fingerprint the input (ffmpeg runs here) ----
     t0 = time.monotonic()
-    try:
-        if file is not None:
-            data = await file.read()
-            ingest_result = ingest_file(data, file.filename)
-        elif text is not None:
-            ingest_result = ingest_text(text)
-        else:
-            assert url is not None
-            ingest_result = ingest_url(url)
-    except IngestError as exc:
-        return _bad(422, exc.code, exc.message)
-
-    resolved_locale = locale if locale in ("en", "hi") else settings.default_locale
-
     query_hashes, body_text, email_parsed = _query_hashes_and_text(ingest_result)
     combined_text = " ".join(t for t in (claimed_sender_text, body_text) if t)
+    yield stage("reading", t0, f"reading_{ingest_result.kind.value}",
+                outcome=ingest_result.kind.value)
 
+    # ---- stage 2: hard binding ----
+    # Always "no manifest" on this endpoint by design — see the module
+    # docstring. Reported honestly rather than skipped, because "the forward
+    # stripped the signature" is exactly what makes stage 3 matter.
+    t0 = time.monotonic()
+    yield stage("signature", t0, "signature_none", outcome="no_manifest")
+
+    # ---- stage 3: registry match ----
+    t0 = time.monotonic()
+    thresholds = MatchThresholds(
+        phash_match_max_dist=settings.phash_match_max_dist,
+        phash_near_max_dist=settings.phash_near_max_dist,
+        pdq_match_max_dist=settings.pdq_match_max_dist,
+        video_frame_match_ratio=settings.video_frame_match_ratio,
+        simhash_match_max_dist=settings.simhash_match_max_dist,
+    )
+    registry_match = match_registry(query_hashes, _load_candidates(db), thresholds)
+    # Built from comparisons match_registry already made; explains the result,
+    # never feeds back into it (see pipeline/evidence.py).
+    match_evidence = build_match_evidence(query_hashes, registry_match, thresholds)
+    match_key = (
+        "registry_none" if registry_match.kind == "none"
+        else "registry_near" if registry_match.kind == "near"
+        else "registry_match"
+    )
+    yield stage("registry", t0, match_key, outcome=registry_match.kind)
+
+    # ---- stage 4: claims + risk ----
+    t0 = time.monotonic()
     entities = load_entity_refs(db)
     claims = extract_claim(combined_text, entities)
     registered_domains = [d for e in entities for d in e.domains]
@@ -330,15 +382,9 @@ async def verify(
             )
             risk.fraud_positive = True
             risk.risk_high = True
-
-    thresholds = MatchThresholds(
-        phash_match_max_dist=settings.phash_match_max_dist,
-        phash_near_max_dist=settings.phash_near_max_dist,
-        pdq_match_max_dist=settings.pdq_match_max_dist,
-        video_frame_match_ratio=settings.video_frame_match_ratio,
-        simhash_match_max_dist=settings.simhash_match_max_dist,
-    )
-    registry_match = match_registry(query_hashes, _load_candidates(db), thresholds)
+    n_flags = len({s.code for s in risk.signals} - {"DOMAIN_REGISTERED"})
+    yield stage("risk", t0, "risk_flags" if n_flags else "risk_clean",
+                outcome=f"{n_flags}_signals", n=n_flags)
 
     decision: Decision = decide(
         DecisionInput(
@@ -351,7 +397,7 @@ async def verify(
         )
     )
     decision = _downgrade_if_key_revoked(db, decision)
-    latency_ms = int((time.monotonic() - t0) * 1000)
+    latency_ms = int((time.monotonic() - t_start) * 1000)
 
     verification = Verification(
         channel=channel,
@@ -361,6 +407,8 @@ async def verify(
         signals={
             "trace": [t.model_dump() for t in decision.trace],
             "risk_signals": [s.model_dump() for s in risk.signals],
+            # stored so a re-render of this verification keeps its evidence panel
+            "match_evidence": match_evidence.model_dump(mode="json") if match_evidence else None,
         },
         matched_entity_id=decision.matched_entity_id,
         matched_communication_id=decision.matched_communication_id,
@@ -381,14 +429,126 @@ async def verify(
     ctx = RenderContext(
         verification_id=str(verification.id),
         decision=decision,
-        locale=resolved_locale,
+        locale=locale,
         matched_entity=_entity_ref_out(db, decision.matched_entity_id),
         matched_communication=_comm_ref_out(db, decision.matched_communication_id),
         claimed_entity_text=claims.claimed_entity_text,
+        revoked_date=_revoked_key_date(db, decision),
         certificate_url=cert_url,
         sebi_check_url=settings.sebi_check_url,
+        match_evidence=match_evidence,
     )
-    return ok(render_verdict(ctx).model_dump(mode="json"))
+    yield ("result", render_verdict(ctx).model_dump(mode="json"))
+
+
+async def _prepare(
+    request: Request,
+    file: UploadFile | None,
+    text: str | None,
+    url: str | None,
+    locale: str | None,
+) -> tuple[IngestResult, str] | JSONResponse:
+    """Shared guard rails: rate limit, exactly-one-input, ingest. Returns the
+    ingested input and resolved locale, or the error response to send."""
+    settings = get_settings()
+    ip = request.client.host if request.client else "unknown"
+    try:
+        allowed, retry_after = _rate_limit(get_redis(), ip, settings.verify_rate_limit_per_min)
+    except Exception:
+        allowed, retry_after = True, 0  # rate limiting is best-effort, never blocks the demo
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content=err("rate_limited", f"Too many requests. Retry in {retry_after}s."),
+            headers={"Retry-After": str(retry_after)},
+        )
+    if sum(x is not None for x in (file, text, url)) != 1:
+        return _bad(422, "bad_input", "Provide exactly one of file, text, or url.")
+    try:
+        if file is not None:
+            ingest_result = ingest_file(await file.read(), file.filename)
+        elif text is not None:
+            ingest_result = ingest_text(text)
+        else:
+            assert url is not None
+            ingest_result = ingest_url(url)
+    except IngestError as exc:
+        return _bad(422, exc.code, exc.message)
+    return ingest_result, (locale if locale in ("en", "hi") else settings.default_locale)
+
+
+@router.post("/verify")
+async def verify(
+    request: Request,
+    file: UploadFile | None = None,
+    text: str | None = Form(None),
+    url: str | None = Form(None),
+    claimed_sender_text: str | None = Form(None),
+    state_code: str | None = Form(None),
+    locale: str | None = Form(None),
+    channel: VerifyChannel = Form(VerifyChannel.sim),
+    db: Session = Depends(get_db),
+):
+    prepared = await _prepare(request, file, text, url, locale)
+    if isinstance(prepared, JSONResponse):
+        return prepared
+    ingest_result, resolved_locale = prepared
+
+    card: dict = {}
+    for kind, payload in _run_verification(
+        db, ingest_result, claimed_sender_text=claimed_sender_text,
+        state_code=state_code, channel=channel, locale=resolved_locale,
+    ):
+        if kind == "result":
+            card = payload
+    return ok(card)
+
+
+@router.post("/verify/stream")
+async def verify_stream(
+    request: Request,
+    file: UploadFile | None = None,
+    text: str | None = Form(None),
+    url: str | None = Form(None),
+    claimed_sender_text: str | None = Form(None),
+    state_code: str | None = Form(None),
+    locale: str | None = Form(None),
+    channel: VerifyChannel = Form(VerifyChannel.sim),
+):
+    """Same pipeline, streamed as Server-Sent Events so the caller sees each
+    stage land as the server finishes it. Durations reported are real
+    measurements, not pacing — a large video genuinely dwells on `reading`
+    while ffmpeg samples frames.
+
+    Owns its Session rather than taking `Depends(get_db)`: dependency
+    teardown runs before a StreamingResponse body is consumed, which would
+    hand the generator an already-closed session.
+    """
+    prepared = await _prepare(request, file, text, url, locale)
+    if isinstance(prepared, JSONResponse):
+        return prepared
+    ingest_result, resolved_locale = prepared
+
+    def event_stream() -> Iterator[str]:
+        db = SessionLocal()
+        try:
+            for kind, payload in _run_verification(
+                db, ingest_result, claimed_sender_text=claimed_sender_text,
+                state_code=state_code, channel=channel, locale=resolved_locale,
+            ):
+                yield f"data: {json.dumps({'type': kind, 'payload': payload})}\n\n"
+        except Exception as exc:  # never leave the client hanging on a broken stream
+            logger.exception("verify stream failed")
+            error = err("stream_failed", f"Verification failed: {exc.__class__.__name__}")
+            yield f"data: {json.dumps({'type': 'error', 'payload': error})}\n\n"
+        finally:
+            db.close()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/verifications/{verification_id}")
@@ -416,6 +576,12 @@ def get_verification(verification_id: uuid.UUID, locale: str = "en", db: Session
     if token_row is not None and token_row.used_at is None and token_row.expires_at > datetime.now(UTC):
         cert_url = f"/c/{token_row.token}"
 
+    stored_evidence = (v.signals or {}).get("match_evidence")
+    try:
+        evidence = MatchEvidence.model_validate(stored_evidence) if stored_evidence else None
+    except ValueError:
+        evidence = None  # row predates the evidence panel — render without it
+
     ctx = RenderContext(
         verification_id=str(v.id),
         decision=decision,
@@ -423,8 +589,10 @@ def get_verification(verification_id: uuid.UUID, locale: str = "en", db: Session
         matched_entity=_entity_ref_out(db, v.matched_entity_id),
         matched_communication=_comm_ref_out(db, v.matched_communication_id),
         claimed_entity_text=v.claimed_entity_text,
+        revoked_date=_revoked_key_date(db, decision),
         certificate_url=cert_url,
         sebi_check_url=get_settings().sebi_check_url,
+        match_evidence=evidence,
     )
     return ok(render_verdict(ctx).model_dump(mode="json"))
 

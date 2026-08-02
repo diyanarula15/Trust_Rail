@@ -70,6 +70,39 @@ you just published in step 1. Click **"How this was checked"**: the trace
 reads `hard_binding: no manifest` → `registry_match: video match` (the
 re-encode destroyed any embedded manifest, so the video frame hash match is
 what actually verified it; this is the whole reason soft binding exists).
+
+Below the trace, the **evidence panel** shows the working rather than
+asking anyone to take it on faith: the frame strip marks which sampled
+frames matched and how many were needed. **This is the panel to linger on.**
+It is at its most convincing on an image (step 3b below), where the two
+SHA-256s are visibly, completely different while the two perceptual
+fingerprints are identical or near-identical. That contrast *is* the
+argument for why soft binding has to exist.
+
+### 3b. The same thing, but on an image (the clearest version)
+
+In a terminal, mangle a registered image and submit it:
+
+```
+cd backend
+.venv/bin/python -m scripts.wa_sim_transform ../assets_input/image1.jpg --preset screenshot_sim -o ../assets_input/image1_shot.jpg
+```
+
+Drop `image1_shot.jpg` into **/verify** and open **"How this was checked"**.
+Expect ✅ Verified (Meridian Broking Ltd) and, in the panel:
+
+- the image you sent beside the one Meridian published;
+- **Byte hash (SHA-256): completely different** — a 2.5% crop rewrote every byte;
+- **Perceptual fingerprint: 10 of 64 bits differ**, drawn as two 8x8 grids
+  with the ten differing cells ringed. Those grids are not a diagram of the
+  hash: a phash64 *is* an 8x8 grid of bits, so you are looking at the hash
+  itself;
+- the distance scale showing 10 sitting right on the match line.
+
+Then submit any unrelated photo. Same panel, honest opposite result:
+"closest registered item was ~32 of 64 bits away, well past the 10-bit
+match line," and the verdict stays a calm ℹ️ Informational rather than an
+accusation.
 Click **View certificate** to open the one-time certificate page. Note it
 shows the signature chain and log root; if you reload that same link it
 will now show a "used" state (single use, as designed).
