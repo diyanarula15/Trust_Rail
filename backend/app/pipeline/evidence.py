@@ -55,9 +55,33 @@ class VideoComparison(BaseModel):
     threshold_ratio: float
 
 
+ContentKind = Literal["image", "text", "video", "document"]
+
+# What the reader is actually looking at, which decides how the comparison
+# gets described. Explaining a forwarded SMS in terms of "the picture" is
+# nonsense, so the copy is chosen per kind rather than written once for
+# images and reused everywhere.
+_INPUT_KIND_TO_CONTENT: dict[str, ContentKind] = {
+    "image": "image",
+    "video": "video",
+    "pdf": "document",
+    "eml": "text",
+    "text": "text",
+    "url": "text",
+}
+
+
+def content_kind_for(input_kind: str) -> ContentKind:
+    return _INPUT_KIND_TO_CONTENT.get(input_kind, "text")
+
+
 class MatchEvidence(BaseModel):
     outcome: Literal["match", "near", "miss"]
     kind: str  # the RegistryMatch kind that produced it
+    content_kind: ContentKind = "image"
+    # For text/document matches: the wording the issuer actually published,
+    # so the panel can show it side by side the way images are shown.
+    registered_text: str | None = None
     query_sha256: str | None = None
     registered_sha256: str | None = None
     sha256_identical: bool = False
@@ -120,12 +144,14 @@ def _video(q: QueryHashes, c: Candidate, t: MatchThresholds) -> VideoComparison 
 
 
 def build_match_evidence(
-    q: QueryHashes, m: RegistryMatch, t: MatchThresholds
+    q: QueryHashes, m: RegistryMatch, t: MatchThresholds, input_kind: str = "image"
 ) -> MatchEvidence | None:
     """Explain `m`. Returns None when there is nothing to show — a text-only
     submission that never reached a hash comparison, say."""
+    ck = content_kind_for(input_kind)
     if m.kind == "exact" and m.candidate is not None:
         return MatchEvidence(
+            content_kind=ck,
             outcome="match",
             kind=m.kind,
             query_sha256=q.sha256,
@@ -136,6 +162,7 @@ def build_match_evidence(
 
     if m.kind == "video" and m.candidate is not None:
         return MatchEvidence(
+            content_kind=ck,
             outcome="match",
             kind=m.kind,
             query_sha256=q.sha256,
@@ -151,6 +178,7 @@ def build_match_evidence(
         if comparison is None:
             return None
         return MatchEvidence(
+            content_kind=ck,
             outcome="near" if m.kind == "near" else "match",
             kind=m.kind,
             query_sha256=q.sha256,
@@ -169,6 +197,7 @@ def build_match_evidence(
         if comparison is None and video is None:
             return None
         return MatchEvidence(
+            content_kind=ck,
             outcome="miss",
             kind=m.kind,
             query_sha256=q.sha256,

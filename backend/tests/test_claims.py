@@ -86,3 +86,36 @@ def test_empty_input() -> None:
 
 def test_skeleton_maps_confusables() -> None:
     assert skeleton("Mеridiаn") == skeleton("Meridian")
+
+
+class TestCorporateActionMarkers:
+    """A real AGM notice from an unregistered issuer scored 'no claim at all',
+    which reported as "nothing official here" — false about the message, and a
+    hole a phishing copy of the same notice would have walked through."""
+
+    OFFICIAL_SHAPED = [
+        "Dear Shareholder, 18th AGM of Some Housing Finance Ltd is scheduled today at "
+        "3:45 PM (IST) through virtual mode. Please login to participate in the meeting.",
+        "Dear Investor, remote e-voting for the postal ballot closes on Friday.",
+        "Notice of Extraordinary General Meeting and record date for the rights issue.",
+    ]
+
+    def test_official_shaped_messages_are_at_least_weak_claims(self) -> None:
+        for text in self.OFFICIAL_SHAPED:
+            assert extract_claim(text, ENTITIES).claim_strength == "weak", text
+
+    def test_ordinary_market_news_is_still_no_claim(self) -> None:
+        """The markers must not drag general reporting into 'official claim' —
+        which is why bare 'dividend' and 'board meeting' are deliberately not
+        markers, only reader-addressed or action-specific phrases."""
+        for text in [
+            "Benchmark indices ended higher today led by banking and IT stocks.",
+            "Several companies announced dividends this quarter, analysts said.",
+            "The board meeting of a large private lender concluded late yesterday.",
+        ]:
+            assert extract_claim(text, ENTITIES).claim_strength == "none", text
+
+    def test_a_registered_entity_still_outranks_a_weak_marker(self) -> None:
+        """Naming a known entity is strong evidence; the marker is the fallback."""
+        r = extract_claim("Dear Shareholder, AGM notice from Meridian Broking Ltd.", ENTITIES)
+        assert r.claim_strength == "strong" and r.claimed_entity_id == MERIDIAN.id

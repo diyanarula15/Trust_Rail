@@ -30,6 +30,19 @@ _CLAIM_MARKERS = [
     "circular", "registered intermediary", "official", "reg no", "reg. no",
     "sebi registration", "exchange approved", "regulator", "authorised by",
     "authorized by", "compliance notice",
+    # Corporate actions and direct investor communications. These are the
+    # most common shapes an official market message actually takes in India,
+    # and their absence was a real gap: a genuine AGM notice scored "no claim
+    # at all", and so would a phishing copy of one. Deliberately phrases that
+    # address the reader as a holder or name a specific corporate action —
+    # bare words like "dividend" or "board meeting" also appear in ordinary
+    # news copy and would drag market reporting into OFFICIAL_CLAIM_UNVERIFIED.
+    "dear shareholder", "dear shareholders", "dear investor", "dear investors",
+    "dear member", "dear members", "dear unitholder", "dear unitholders",
+    "annual general meeting", "extraordinary general meeting", "agm", "egm",
+    "postal ballot", "e-voting", "evoting", "remote e-voting",
+    "outcome of the board meeting", "record date", "book closure",
+    "rights issue", "bonus issue", "buyback offer", "scheme of arrangement",
 ]
 
 

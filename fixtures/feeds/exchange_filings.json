@@ -1,0 +1,52 @@
+[
+  {
+    "id": "NDX-ANN-2026-004411",
+    "scrip_code": "DEMO-INE-000451",
+    "company": "Kumaon Metals Ltd",
+    "category": "financial_results",
+    "subject": "Unaudited financial results for the quarter ended 30 June 2026",
+    "attachment_path": "fixtures/generated/filing_kumaon_q1.pdf",
+    "published_at": "2026-07-12T11:20:00+05:30",
+    "exchange": "NDX"
+  },
+  {
+    "id": "NDX-ANN-2026-004518",
+    "scrip_code": "DEMO-INE-000451",
+    "company": "Kumaon Metals Ltd",
+    "category": "board_meeting",
+    "subject": "Outcome of Board Meeting — approval of capacity expansion at the Haldwani unit",
+    "attachment_path": "fixtures/generated/filing_kumaon_capex.pdf",
+    "published_at": "2026-07-14T16:05:00+05:30",
+    "exchange": "NDX"
+  },
+  {
+    "id": "BDX-ANN-2026-119002",
+    "scrip_code": "DEMO-INE-000453",
+    "company": "Nivara Housing Finance",
+    "category": "disclosure",
+    "subject": "Annual disclosure under Regulation 30 — related party transactions",
+    "attachment_path": "fixtures/generated/filing_nivara_annual.pdf",
+    "published_at": "2026-07-09T09:45:00+05:30",
+    "exchange": "BDX"
+  },
+  {
+    "id": "NDX-ANN-2026-004602",
+    "scrip_code": "DEMO-INE-000452",
+    "company": "Vasudha Agrotech Ltd",
+    "category": "compliance",
+    "subject": "Intimation of trading window closure for designated persons",
+    "body": "Pursuant to the Demo Prohibition of Insider Trading Regulations, the trading window for dealing in the securities of Vasudha Agrotech Ltd shall remain closed for all designated persons and their immediate relatives from 01 July 2026 until 48 hours after the declaration of unaudited financial results for the quarter ended 30 June 2026. Designated persons are requested to take note and ensure compliance.",
+    "published_at": "2026-06-30T18:30:00+05:30",
+    "exchange": "NDX"
+  },
+  {
+    "id": "NDX-ANN-2026-004655",
+    "scrip_code": "DEMO-EXC-000010",
+    "company": "National Demo Exchange (NDX)",
+    "category": "general",
+    "subject": "Settlement holiday and revised pay-in schedule for July 2026",
+    "body": "Members are informed that 17 July 2026 shall be a settlement holiday. Pay-in and pay-out obligations otherwise due on that date shift to the next working day. Normal trading and settlement resume on 18 July 2026. Circulars are published only on ndx.example and members are advised to disregard schedules received through any other channel.",
+    "published_at": "2026-07-08T12:00:00+05:30",
+    "exchange": "NDX"
+  }
+]

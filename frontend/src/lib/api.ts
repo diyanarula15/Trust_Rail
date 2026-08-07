@@ -64,6 +64,10 @@ export interface VideoComparison {
 export interface MatchEvidence {
   outcome: "match" | "near" | "miss";
   kind: string;
+  /** What the reader actually sent — decides how the comparison is worded. */
+  content_kind: "image" | "text" | "video" | "document";
+  /** The wording the issuer published, for text/document comparisons. */
+  registered_text: string | null;
   query_sha256: string | null;
   registered_sha256: string | null;
   sha256_identical: boolean;
@@ -85,10 +89,23 @@ export interface EvidenceCopy {
   scale_summary: string | null;
   frames_summary: string | null;
   plain_title: string;
+  plain_file_label: string;
+  plain_content_label: string;
   plain_file_line: string;
   plain_content_line: string;
   plain_explain: string;
   technical_toggle: string;
+}
+
+/** Why the verdict is what it is: the rule that fired, plus anything that
+ * escalated it. Strictness is only defensible if it can be read back. */
+export interface WhyPayload {
+  label: string;
+  rule: string;
+  explanation: string;
+  escalated_by_label: string;
+  escalated_by: string[];
+  strict_note: string;
 }
 
 export interface CardPayload {
@@ -96,6 +113,7 @@ export interface CardPayload {
   verdict: string;
   headline: string;
   body: string;
+  why: WhyPayload | null;
   /** Plain-language register for a non-specialist. Same verdict, no jargon. */
   plain_headline: string;
   plain_body: string;
@@ -283,6 +301,51 @@ export async function getCertificate(
 ): Promise<{ status: number; body: ApiResponse<CertificatePayload> }> {
   const res = await fetch(`${API_BASE_URL}/api/c/${token}`);
   return { status: res.status, body: await res.json() };
+}
+
+/** One recent check, for the dashboard feed. Aggregate fields only — what a
+ * user submitted is never stored, so it is never returned. */
+export interface RecentCheck {
+  id: string;
+  verdict: string;
+  input_kind: string;
+  channel: string;
+  campaign: string | null;
+  state_code: string | null;
+  latency_ms: number;
+  created_at: string;
+}
+
+export async function getRecentChecks(limit = 12): Promise<ApiResponse<RecentCheck[]>> {
+  const res = await fetch(`${API_BASE_URL}/api/telemetry/recent?limit=${limit}`);
+  return res.json();
+}
+
+/** How communications get into the record, and how many came from where. */
+export interface IngestFeed {
+  name: string;
+  adapter: string;
+  origin: string;
+  /** true when pointed at a live endpoint rather than the sample file */
+  live: boolean;
+  ingested: number;
+}
+
+export interface IngestStatus {
+  feeds: IngestFeed[];
+  by_source: Record<string, number>;
+  total_published: number;
+  ingested_total: number;
+}
+
+export async function getIngestStatus(): Promise<ApiResponse<IngestStatus>> {
+  const res = await fetch(`${API_BASE_URL}/api/ingest/status`);
+  return res.json();
+}
+
+export async function runIngest(): Promise<ApiResponse<{ published: number }>> {
+  const res = await fetch(`${API_BASE_URL}/api/ingest/run`, { method: "POST" });
+  return res.json();
 }
 
 export async function getTelemetrySummary(

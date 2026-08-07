@@ -16,6 +16,7 @@ from app.pipeline.verdict import (
     Candidate,
     Decision,
     DecisionInput,
+    DecisionRule,
     MatchThresholds,
     QueryHashes,
     ReasonCode,
@@ -224,6 +225,83 @@ class TestGuardrailNoUnprovenVerified:
         for d in proven:
             assert d.verdict == Verdict.VERIFIED
             assert set(d.reasons) & proofs
+
+
+class TestStrictEscalation:
+    """Strict about fraud signals, never strict about absence of proof.
+
+    The rule this replaced was asymmetric: a risky URL escalated only when
+    NO claim was present, so adding an official-sounding claim — strictly
+    more dangerous — produced a *softer* verdict.
+    """
+
+    RISKY_URL = "Login now at http://emeetings-example-verify.top/claim before it expires today."
+
+    def test_risky_url_escalates_with_a_claim(self) -> None:
+        text = f"Dear Shareholder, AGM notice. {self.RISKY_URL}"
+        d = decide(DecisionInput(
+            claims=extract_claim(text, [MERIDIAN]),
+            risk=analyze_risk(text, ["meridianbroking.example"], []),
+        ))
+        assert d.verdict == Verdict.LIKELY_FAKE
+        assert d.rule == DecisionRule.CLAIM_WITH_FRAUD_SIGNALS
+        assert ReasonCode.URL_RISK in d.escalating_reasons
+
+    def test_risky_url_escalates_without_a_claim(self) -> None:
+        d = decide(DecisionInput(risk=analyze_risk(self.RISKY_URL, [], [])))
+        assert d.verdict == Verdict.LIKELY_FAKE
+        assert d.rule == DecisionRule.FRAUD_SIGNALS_NO_CLAIM
+
+    def test_lookalike_domain_alone_escalates(self) -> None:
+        """Previously missed entirely: a lookalike with no entity named fell
+        through to INFORMATIONAL."""
+        text = "Update your details at http://rneridianbroking-refunds.top/claim"
+        d = decide(DecisionInput(risk=analyze_risk(text, ["meridianbroking.example"], [])))
+        assert d.verdict == Verdict.LIKELY_FAKE
+        assert ReasonCode.LOOKALIKE_DOMAIN in d.reasons
+
+    def test_absence_of_proof_never_escalates(self) -> None:
+        """The other half of the policy, and the more important half: an
+        official-looking message with no fraud signals is 'cannot confirm',
+        never 'fake' — a genuine issuer outside the registry lands here."""
+        text = ("Dear Shareholder, 18th AGM of Some Housing Finance Ltd is scheduled today "
+                "at 3:45 PM through virtual mode. Please login to https://emeetings.example.com/ "
+                "to participate.")
+        d = decide(DecisionInput(
+            claims=extract_claim(text, [MERIDIAN]),
+            risk=analyze_risk(text, ["meridianbroking.example"], []),
+        ))
+        assert d.verdict == Verdict.OFFICIAL_CLAIM_UNVERIFIED
+        assert d.rule == DecisionRule.CLAIM_WITHOUT_MATCH
+        assert d.escalating_reasons == []
+
+    def test_ordinary_news_is_untouched_by_strictness(self) -> None:
+        text = "Benchmark indices ended higher today led by banking and IT stocks."
+        d = decide(DecisionInput(
+            claims=extract_claim(text, [MERIDIAN]),
+            risk=analyze_risk(text, ["meridianbroking.example"], []),
+        ))
+        assert d.verdict == Verdict.INFORMATIONAL
+        assert d.rule == DecisionRule.NO_CLAIM
+
+    def test_contact_email_is_not_a_payment_demand(self) -> None:
+        """An email address is not a UPI handle; treating it as one used to
+        put PAYMENT_ASK on ordinary corporate mail, which now escalates."""
+        text = "Dear Shareholder, for queries write to investor.relations@example.com"
+        risk = analyze_risk(text, [], [])
+        assert not any(s.code == "PAYMENT_ASK" for s in risk.signals)
+        d = decide(DecisionInput(claims=extract_claim(text, [MERIDIAN]), risk=risk))
+        assert d.verdict == Verdict.OFFICIAL_CLAIM_UNVERIFIED
+
+    def test_every_verdict_carries_a_rule(self) -> None:
+        for inp in [
+            DecisionInput(envelope_result=_env(), envelope_entity_id=ENTITY_ID),
+            DecisionInput(registry_match=match_registry(
+                QueryHashes(sha256="aa" * 32), [_candidate()], T)),
+            DecisionInput(claims=extract_claim("Official circular", [MERIDIAN])),
+            DecisionInput(),
+        ]:
+            assert decide(inp).rule in set(DecisionRule)
 
 
 # ---- registry matcher unit coverage ----

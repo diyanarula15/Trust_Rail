@@ -1,4 +1,8 @@
-"""Perceptual + SimHash matching survives WhatsApp-style mangling."""
+"""Perceptual + SimHash matching survives WhatsApp-style mangling.
+
+Includes the numeric guard: SimHash's tolerance is what lets a forwarded
+message still match, and is also what let a doctored filing through.
+"""
 import io
 import random
 
@@ -101,3 +105,38 @@ class TestVideoRatio:
 
 def test_normalize_text() -> None:
     assert hashing.normalize_text("  HELLO​   World\n\tfoo ") == "hello world foo"
+
+
+class TestNumericGuard:
+    """A doctored figure moves SimHash by ~2 bits against a threshold of 6, so
+    wording alone cannot police documents. Numbers are compared exactly
+    because forwarding never edits them and tampering always does."""
+
+    FILING = (
+        "Kumaon Metals Ltd SEBI registration DEMO-INE-000451 Outcome of Board Meeting. "
+        "The Board of Directors at their meeting held today approved the unaudited "
+        "financial results. Revenue from operations 9,588.18 Other income 212.44 "
+        "Total income 9,800.62 Profit after tax 662.91. You are requested to take "
+        "the same on record. Yours faithfully, Company Secretary."
+    )
+
+    def test_altered_figure_barely_moves_simhash(self) -> None:
+        """The weakness this guard exists for — documented, not hidden."""
+        tampered = self.FILING.replace("9,588.18", "19,588.18")
+        dist = hashing.hamming_hex(
+            hashing.simhash64_hex(self.FILING), hashing.simhash64_hex(tampered)
+        )
+        assert dist <= 6, "if this ever exceeds the threshold the guard may be redundant"
+
+    def test_numeric_tokens_catch_the_altered_figure(self) -> None:
+        tampered = self.FILING.replace("9,588.18", "19,588.18")
+        assert hashing.numeric_tokens(self.FILING) != hashing.numeric_tokens(tampered)
+
+    def test_forward_noise_does_not_change_numbers(self) -> None:
+        """The other half: emoji, whitespace and zero-width injection must
+        leave the numeric set identical, or genuine forwards break."""
+        noisy = self.FILING.replace(" ", "  ").replace("Board", "Board 😊") + "​"
+        assert hashing.numeric_tokens(self.FILING) == hashing.numeric_tokens(noisy)
+
+    def test_commas_are_normalised(self) -> None:
+        assert hashing.numeric_tokens("total 9,588.18") == hashing.numeric_tokens("total 9588.18")

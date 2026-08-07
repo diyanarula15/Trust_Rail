@@ -70,6 +70,33 @@ custody) for what this prototype deliberately doesn't build.
 shipped, every deviation from the original spec and why, and how each
 epic's gate was actually verified.
 
+## How communications get in
+
+Three intake paths, two of which are infrastructure that already exists, so
+issuers are not asked to do anything new:
+
+- **Exchange filings** — corporate announcements in the shape exchanges
+  already publish them (scrip code, category, subject, attachment).
+- **DLT SMS registry** — under TRAI's DLT rules every commercial sender
+  header and message template is pre-registered before use. That registry is
+  the authoritative wording; ingesting it means a received SMS can be checked
+  against the template its sender registered.
+- **Issuer console** — manual maker-checker publishing for anything else.
+
+```bash
+cd backend
+.venv/bin/python -m scripts.ingest_feeds            # one pass
+.venv/bin/python -m scripts.ingest_feeds --watch    # keep polling
+```
+
+Ships pointed at the sample feeds in `fixtures/feeds/`. Set
+`EXCHANGE_FEED_URL` or `DLT_SMS_FEED_URL` and the same code polls a live
+endpoint instead. Re-running is safe: identical content is recognised and
+skipped, never republished. Ingested items go through the same envelope,
+Ed25519 signing and transparency-log append as anything published by hand,
+and each log entry records `source` and `external_id` so an ingested
+publication is distinguishable from a hand-approved one.
+
 ## Stack
 
 FastAPI + SQLAlchemy + Postgres + Redis on the backend; Next.js 14 (App

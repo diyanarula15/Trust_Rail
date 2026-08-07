@@ -28,6 +28,38 @@ def _parse_window_days(window: str) -> int:
     return int(m.group(1)) if m else 14
 
 
+@router.get("/recent")
+def telemetry_recent(limit: int = 12, db: Session = Depends(get_db)) -> dict:
+    """The last few checks, for the dashboard's live feed.
+
+    Aggregate-shaped on purpose: verdict, input kind, campaign and timing
+    only. What a user actually submitted is never persisted by /api/verify
+    and must not appear here either.
+    """
+    rows = (
+        db.execute(
+            select(Verification).order_by(Verification.created_at.desc()).limit(min(limit, 50))
+        )
+        .scalars()
+        .all()
+    )
+    return ok(
+        [
+            {
+                "id": str(v.id),
+                "verdict": v.verdict.value,
+                "input_kind": v.input_kind.value,
+                "channel": v.channel.value,
+                "campaign": v.campaign,
+                "state_code": v.state_code,
+                "latency_ms": v.latency_ms,
+                "created_at": v.created_at.isoformat(),
+            }
+            for v in rows
+        ]
+    )
+
+
 @router.get("/summary")
 def telemetry_summary(window: str = "14d", db: Session = Depends(get_db)) -> dict:
     since = datetime.now(UTC) - timedelta(days=_parse_window_days(window))

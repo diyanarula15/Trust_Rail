@@ -2,21 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Space-separated RGB channels, not hex. Tailwind composes these as
+   `rgb(var(--x) / <alpha-value>)` (see tailwind.config.ts), which is what
+   makes opacity modifiers like `bg-verified/10` work at all — with a hex
+   `var()` they silently produce invalid CSS and the rule is dropped.
+   Same palette values as before: #0a1b2e, #f7f5f0, ... */
 :root {
-  --ink: #0a1b2e;
-  --paper: #f7f5f0;
-  --card: #ffffff;
-  --hairline: #e4e0d6;
-  --verified: #0e7c4a;
-  --notice: #b87a00;
-  --fake: #c6362b;
-  --info: #5b6b7c;
-  --seal: #8a6d1d;
+  --ink: 10 27 46;
+  --paper: 247 245 240;
+  --card: 255 255 255;
+  --hairline: 228 224 214;
+  --verified: 14 124 74;
+  --notice: 184 122 0;
+  --fake: 198 54 43;
+  --info: 91 107 124;
+  --seal: 138 109 29;
 }
 
 body {
-  background-color: var(--paper);
-  color: var(--ink);
+  background-color: rgb(var(--paper));
+  color: rgb(var(--ink));
+}
+
+/* ---------------------------------------------------------------------
+   Animation utilities.
+
+   Written as plain CSS rather than Tailwind theme extensions on purpose:
+   utilities that Tailwind has to generate fail *silently* when something
+   is off (the class just never appears and the element sits there unstyled),
+   which is exactly how an earlier unstyled-UI incident happened here. These
+   always exist because they are literally in the stylesheet.
+
+   Everything below is disabled wholesale by the reduced-motion block that
+   follows, so none of it is load-bearing for comprehension.
+   --------------------------------------------------------------------- */
+
+@keyframes tr-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Entrance for cards and rows. --tr-delay staggers a group. */
+.tr-rise {
+  animation: tr-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--tr-delay, 0ms);
+}
+
+@keyframes tr-travel {
+  0%        { left: 0; opacity: 0; }
+  10%       { opacity: 1; }
+  90%       { opacity: 1; }
+  100%      { left: 100%; opacity: 0; }
+}
+
+/* The dot that runs along the pipeline rail, showing direction of flow. */
+.tr-travel {
+  animation: tr-travel 3.2s ease-in-out infinite;
+  animation-delay: var(--tr-delay, 0ms);
+}
+
+@keyframes tr-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.86); }
+}
+
+/* Live indicator. */
+.tr-breathe { animation: tr-breathe 2s ease-in-out infinite; }
+
+@keyframes tr-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* Loading shimmer for tiles waiting on data. */
+.tr-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(var(--hairline) / 0.55), transparent);
+  animation: tr-sweep 1.5s ease-in-out infinite;
+}
+
+@keyframes tr-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Distribution bars growing from the left on first paint. */
+.tr-grow {
+  transform-origin: left;
+  animation: tr-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--tr-delay, 0ms);
 }
 
 @media (prefers-reduced-motion: reduce) {

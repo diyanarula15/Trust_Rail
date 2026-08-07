@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, ScrollText, ShieldCheck } from "lucide-react";
 import {
   getInclusionProof,
   getLogRoot,
@@ -11,30 +11,53 @@ import {
   type LogRoot,
 } from "@/lib/api";
 import { verifyInclusion, verifySth } from "@/lib/merkle";
+import { Badge, Card, EmptyState, Page, PageHeader, TableWrap, Th } from "@/components/ui";
 
-type SthState = "checking" | "valid" | "invalid";
+type CheckState = "checking" | "valid" | "invalid";
+
+const KIND_LABEL: Record<string, { label: string; tone: string }> = {
+  publish: { label: "Published", tone: "verified" },
+  key_revocation: { label: "Key revoked", tone: "fake" },
+  communication_revocation: { label: "Withdrawn", tone: "notice" },
+};
+
+function StateLine({ state, labels }: { state: CheckState; labels: Record<CheckState, string> }) {
+  return (
+    <span className="flex items-center gap-1.5 text-sm">
+      {state === "checking" && <Loader2 className="h-4 w-4 animate-spin text-info" aria-hidden />}
+      {state === "valid" && <CheckCircle2 className="h-4 w-4 text-verified" aria-hidden />}
+      {state === "invalid" && <XCircle className="h-4 w-4 text-fake" aria-hidden />}
+      <span className={state === "invalid" ? "text-fake" : state === "valid" ? "text-ink" : "text-info"}>
+        {labels[state]}
+      </span>
+    </span>
+  );
+}
 
 export default function LogPage() {
   const [root, setRoot] = useState<LogRoot | null>(null);
-  const [sthState, setSthState] = useState<SthState>("checking");
+  const [sthState, setSthState] = useState<CheckState>("checking");
   const [entries, setEntries] = useState<LogEntryOut[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [proof, setProof] = useState<InclusionProof | null>(null);
-  const [proofState, setProofState] = useState<SthState>("checking");
+  const [proofState, setProofState] = useState<CheckState>("checking");
 
   useEffect(() => {
     getLogRoot().then((r) => {
       if (r.ok && r.data) {
         setRoot(r.data);
         if (r.data.sth_sig && r.data.timestamp) {
-          const ok = verifySth(
-            r.data.tree_size,
-            r.data.root_hash,
-            r.data.timestamp,
-            r.data.sth_sig,
-            r.data.registry_public_key
+          setSthState(
+            verifySth(
+              r.data.tree_size,
+              r.data.root_hash,
+              r.data.timestamp,
+              r.data.sth_sig,
+              r.data.registry_public_key
+            )
+              ? "valid"
+              : "invalid"
           );
-          setSthState(ok ? "valid" : "invalid");
         }
       }
     });
@@ -63,111 +86,162 @@ export default function LogPage() {
     setProofState(ok ? "valid" : "invalid");
   }
 
-  function entryKind(entry: Record<string, unknown>): string {
-    return typeof entry.kind === "string" ? entry.kind : "publish";
-  }
-
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="font-display text-2xl font-bold text-ink">Transparency log</h1>
-      <p className="mt-1 text-sm text-info">
-        Append-only, tamper-evident record of every publish and revocation.
-      </p>
+    <Page wide>
+      <PageHeader
+        eyebrow="Append-only, tamper-evident"
+        title="Public record"
+        lead="Every publication and every withdrawal, in the order it happened. Entries cannot be altered or removed after the fact without the record's fingerprint changing, and your browser checks that mathematically rather than taking our word for it."
+      />
 
       {root && (
-        <div className="mt-6 rounded border border-hairline bg-card p-4">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-sm">
-            <span className="text-info">
-              tree size <span className="text-ink">{root.tree_size}</span>
-            </span>
-            <span className="break-all text-info">
-              root <span className="text-ink">{root.root_hash}</span>
-            </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-sm">
-            {sthState === "checking" && <Loader2 className="h-4 w-4 animate-spin text-info" />}
-            {sthState === "valid" && <CheckCircle2 className="h-4 w-4 text-verified" />}
-            {sthState === "invalid" && <XCircle className="h-4 w-4 text-fake" />}
-            <span className={sthState === "invalid" ? "text-fake" : "text-info"}>
-              STH signature {sthState === "checking" ? "checking…" : sthState === "valid" ? "verified against the registry public key" : "FAILED to verify"}
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="mt-6 rounded border border-hairline bg-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-hairline text-left text-info">
-              <th className="p-3 font-medium">Seq</th>
-              <th className="p-3 font-medium">Kind</th>
-              <th className="p-3 font-medium">Leaf hash</th>
-              <th className="p-3 font-medium">Created</th>
-              <th className="p-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((e) => (
-              <tr
-                key={e.seq}
-                className={`border-b border-hairline last:border-0 ${
-                  selected === e.seq ? "bg-paper" : ""
-                }`}
-              >
-                <td className="p-3 font-mono text-ink">#{e.seq}</td>
-                <td className="p-3 text-ink">{entryKind(e.entry)}</td>
-                <td className="p-3 font-mono text-xs text-info">{e.leaf_hash.slice(0, 16)}…</td>
-                <td className="p-3 text-xs text-info">{e.created_at.slice(0, 19)}</td>
-                <td className="p-3">
-                  <button
-                    type="button"
-                    onClick={() => verifyEntry(e.seq)}
-                    className="rounded border border-hairline px-2 py-1 text-xs font-medium text-ink hover:bg-paper"
-                  >
-                    Verify inclusion proof
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {selected !== null && (
-        <div className="mt-6 rounded border border-hairline bg-card p-4">
-          <h2 className="font-display text-lg font-semibold text-ink">
-            Inclusion proof for #{selected}
-          </h2>
-          {proof && (
-            <div className="mt-3 space-y-2 font-mono text-xs text-info">
-              <div>
-                leaf <span className="break-all text-ink">{proof.leaf_hash}</span>
+        <Card accent="border-l-ink" className="mb-6 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-xs uppercase tracking-wide text-info">
+                Current fingerprint of the whole record
               </div>
-              <div>
-                index {proof.leaf_index} of {proof.tree_size}
+              <div className="mt-1.5 break-all font-mono text-sm text-ink">{root.root_hash}</div>
+              <div className="mt-1 font-mono text-xs text-info">
+                {root.tree_size} entries
+                {root.timestamp ? ` · sealed ${root.timestamp.slice(0, 19).replace("T", " ")}` : ""}
               </div>
-              <div>audit path ({proof.audit_path.length} hashes)</div>
-              {proof.audit_path.map((h, i) => (
-                <div key={i} className="pl-4">
-                  {h.slice(0, 24)}…
-                </div>
-              ))}
             </div>
-          )}
-          <div className="mt-3 flex items-center gap-1.5 text-sm">
-            {proofState === "checking" && <Loader2 className="h-4 w-4 animate-spin text-info" />}
-            {proofState === "valid" && <CheckCircle2 className="h-4 w-4 text-verified" />}
-            {proofState === "invalid" && <XCircle className="h-4 w-4 text-fake" />}
-            <span className={proofState === "invalid" ? "text-fake" : "text-ink"}>
-              {proofState === "checking"
-                ? "Verifying, hash by hash…"
-                : proofState === "valid"
-                  ? "Proof verifies — this entry is provably part of the current log."
-                  : "Proof failed to verify."}
-            </span>
+            <div className="shrink-0 rounded bg-paper px-3 py-2">
+              <StateLine
+                state={sthState}
+                labels={{
+                  checking: "Checking the seal…",
+                  valid: "Seal verified in your browser",
+                  invalid: "Seal FAILED to verify",
+                }}
+              />
+              <p className="mt-1 max-w-xs text-xs leading-relaxed text-info">
+                Signed by the registry. Your browser re-checked the signature itself.
+              </p>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
-    </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div>
+          {entries.length === 0 ? (
+            <EmptyState
+              title="The record is empty"
+              hint="Publish something from the issuer console and it will appear here."
+              icon={<ScrollText className="h-6 w-6" />}
+            />
+          ) : (
+            <TableWrap>
+              <table className="w-full text-sm">
+                <thead className="border-b border-hairline bg-paper">
+                  <tr>
+                    <Th>#</Th>
+                    <Th>Event</Th>
+                    <Th>Fingerprint</Th>
+                    <Th>When</Th>
+                    <Th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((e) => {
+                    const kind = typeof e.entry.kind === "string" ? e.entry.kind : "publish";
+                    const meta = KIND_LABEL[kind] ?? { label: kind, tone: "neutral" };
+                    return (
+                      <tr
+                        key={e.seq}
+                        className={`border-b border-hairline last:border-0 ${
+                          selected === e.seq ? "bg-paper" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-3 font-mono text-ink">{e.seq}</td>
+                        <td className="px-4 py-3">
+                          <Badge tone={meta.tone}>{meta.label}</Badge>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-info">
+                          {e.leaf_hash.slice(0, 12)}…
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-info">
+                          {e.created_at.slice(0, 10)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => verifyEntry(e.seq)}
+                            className="whitespace-nowrap rounded border border-hairline px-2.5 py-1 text-xs font-medium text-ink hover:bg-paper"
+                          >
+                            Check it
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableWrap>
+          )}
+        </div>
+
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          {selected === null ? (
+            <EmptyState
+              title="Check any entry"
+              hint="Pick “Check it” on a row. Your browser will re-derive the record's fingerprint from that entry and prove it is genuinely part of the record."
+              icon={<ShieldCheck className="h-6 w-6" />}
+            />
+          ) : (
+            <Card className="p-5">
+              <h2 className="font-display text-lg font-bold tracking-tight text-ink">
+                Proof for entry {selected}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-info">
+                Starting from this entry and combining it with the hashes below, your browser
+                should arrive at exactly the record fingerprint shown above.
+              </p>
+
+              <div className="mt-4 rounded bg-paper px-3 py-2.5">
+                <StateLine
+                  state={proofState}
+                  labels={{
+                    checking: "Working through the hashes…",
+                    valid: "It checks out — this entry is provably in the record",
+                    invalid: "Proof failed to verify",
+                  }}
+                />
+              </div>
+
+              {proof && (
+                <div className="mt-4 space-y-3 font-mono text-xs">
+                  <div>
+                    <div className="text-info">this entry</div>
+                    <div className="mt-0.5 break-all text-ink">{proof.leaf_hash}</div>
+                  </div>
+                  <div>
+                    <div className="text-info">
+                      combined with {proof.audit_path.length} sibling hash
+                      {proof.audit_path.length === 1 ? "" : "es"}
+                    </div>
+                    <ul className="mt-1 space-y-0.5">
+                      {proof.audit_path.map((h, i) => (
+                        <li key={i} className="truncate text-ink">
+                          {h}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="text-info">position</div>
+                    <div className="mt-0.5 text-ink">
+                      {proof.leaf_index} of {proof.tree_size}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+        </div>
+      </div>
+    </Page>
   );
 }

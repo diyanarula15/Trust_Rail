@@ -58,11 +58,14 @@ const VERDICT_STYLE: Record<
 export function VerdictCard({
   card,
   submittedImageUrl,
+  submittedText,
 }: {
   card: CardPayload;
   /** Object URL of the file just sent, for the side-by-side comparison.
    * Absent on a re-render — the server never keeps what was submitted. */
   submittedImageUrl?: string | null;
+  /** The message just sent, for the wording comparison on a text result. */
+  submittedText?: string | null;
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const style = VERDICT_STYLE[card.verdict] ?? VERDICT_STYLE.INFORMATIONAL;
@@ -98,6 +101,37 @@ export function VerdictCard({
               </li>
             ))}
           </ul>
+        )}
+
+        {card.why?.explanation && (
+          <div className="mt-3 rounded border border-hairline bg-paper px-3 py-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-info">
+              {card.why.label}
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-ink">{card.why.explanation}</p>
+
+            {card.why.escalated_by.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs font-medium text-info">
+                  {card.why.escalated_by_label}
+                </span>
+                <ul className="mt-1 space-y-0.5">
+                  {card.why.escalated_by.map((line, i) => (
+                    <li key={i} className={`flex gap-1.5 text-xs ${style.color}`}>
+                      <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-current" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {card.why.strict_note && (
+              <p className="mt-2 border-t border-hairline pt-2 text-xs leading-relaxed text-info">
+                {card.why.strict_note}
+              </p>
+            )}
+          </div>
         )}
 
         {(card.matched_entity || card.matched_communication) && (
@@ -159,6 +193,7 @@ export function VerdictCard({
                 evidence={card.match_evidence}
                 copy={card.evidence_copy}
                 submittedImageUrl={submittedImageUrl}
+                submittedText={submittedText}
               />
             )}
             <div>

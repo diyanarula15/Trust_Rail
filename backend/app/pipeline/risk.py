@@ -25,7 +25,13 @@ _PHRASE_CLUSTERS: dict[str, re.Pattern[str]] = {
     "apk_download": re.compile(r"\.apk\b|download .{0,20}(apk|app from link)"),
 }
 
-_UPI_VPA = re.compile(r"\b[\w.\-]{2,}@[a-z]{2,}\b")
+# A UPI VPA is handle@psp where the PSP has no dot (`name@okhdfcbank`,
+# `name@ybl`). An email address always has one (`investor@company.com`), so
+# the trailing-dot lookahead is what separates them. Without it this matched
+# every email address in every message and reported it as a demand for money
+# — harmless when PAYMENT_ASK was only advisory, actively wrong now that it
+# can escalate a verdict.
+_UPI_VPA = re.compile(r"\b[\w.\-]{2,}@[a-z]{2,}\b(?!\.)")
 _BANK_ACCT = re.compile(r"\b\d{9,18}\b.{0,40}\b[A-Z]{4}0[A-Z0-9]{6}\b", re.S)
 _WALLET = re.compile(r"\b(0x[0-9a-fA-F]{40}|[13][1-9A-HJ-NP-Za-km-z]{25,34})\b")
 

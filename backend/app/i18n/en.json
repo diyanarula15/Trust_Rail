@@ -79,6 +79,22 @@
       "NO_OFFICIAL_CLAIM": "It does not claim to be from anyone official."
     }
   },
+  "why": {
+    "label": "Why this answer",
+    "rules": {
+      "SIGNATURE_VALID": "It carries a valid digital signature from a registered issuer, and that signature still checks out.",
+      "SIGNATURE_VALID_KEY_REVOKED": "The signature was valid when it was made, but the key behind it has since been reported stolen, so we downgrade it rather than call it clean.",
+      "REGISTRY_MATCH": "We found this exact content in the record of what registered issuers have published.",
+      "REGISTRY_MATCH_KEY_REVOKED": "The content matches a real publication, but that issuer's signing key has since been reported stolen, so we downgrade it rather than call it clean.",
+      "MATCHED_WITHDRAWN": "This matches something an issuer published and then withdrew, so it should not be acted on.",
+      "CLAIM_WITH_FRAUD_SIGNALS": "It presents itself as official and carries active fraud signals. Either alone would be a warning; together we call it a scam.",
+      "CLAIM_WITHOUT_MATCH": "It presents itself as official, but nothing any registered issuer published matches it. We found no fraud signals either, so we say we cannot confirm it rather than calling it fake.",
+      "FRAUD_SIGNALS_NO_CLAIM": "It does not claim to be official, but it carries fraud signals we treat as serious on their own.",
+      "NO_CLAIM": "It does not present itself as an official market communication and shows no fraud signals, so there is nothing to confirm or deny."
+    },
+    "escalated_by": "Escalated by:",
+    "strict_note": "We are deliberately strict: any one of these is enough to call something a scam. We are never strict the other way — failing to find a match only ever means \"cannot confirm\", never \"fake\"."
+  },
   "live": {
     "stages": {
       "reading": "Opening what you sent",
@@ -124,16 +140,57 @@
     "scale_miss": "Well past the {threshold}-bit match line, so this is not the published content.",
     "frames_summary": "{matched} of {total} sampled frames matched ({percent}%). {threshold}% is the bar for a video match.",
     "plain_title": "What we compared",
-    "plain_file_changed": "The file was changed",
-    "plain_file_same": "The file is untouched",
-    "plain_content_same": "What it shows is unchanged",
-    "plain_content_close": "What it shows is nearly the same",
-    "plain_content_different": "What it shows is different",
-    "plain_explain_match": "Apps like WhatsApp re-save a photo when you forward it. That rewrites the file completely, but it does not change what the picture actually looks like. We compare what it looks like, which is why a forwarded copy still checks out.",
-    "plain_explain_near": "This is close to something official, but not close enough to call the same. An edited copy of a real notice would look exactly like this, so we do not call it verified.",
-    "plain_explain_miss": "We compared it against every picture issuers have published. The closest one still looks clearly different, so this is not one of theirs.",
-    "plain_explain_video": "We sample frames through the video and compare each one, so a re-encoded or re-uploaded copy still matches.",
-    "technical_toggle": "Show the technical detail"
+    "technical_toggle": "Show the technical detail",
+    "kinds": {
+      "image": {
+        "file_label": "The file",
+        "content_label": "The picture",
+        "file_changed": "Rewritten",
+        "file_same": "Untouched",
+        "content_same": "Unchanged",
+        "content_close": "Nearly the same",
+        "content_different": "Different",
+        "explain_match": "Apps like WhatsApp re-save a photo when you forward it. That rewrites the file completely, but it does not change what the picture looks like. We compare what it looks like, which is why a forwarded copy still checks out.",
+        "explain_near": "This looks close to something official, but not close enough to call it the same. An edited copy of a real notice would look exactly like this, so we do not call it verified.",
+        "explain_miss": "We compared it against every picture issuers have published. The closest one still looks clearly different, so this is not one of theirs."
+      },
+      "text": {
+        "file_label": "The exact characters",
+        "content_label": "The wording",
+        "file_changed": "Not identical",
+        "file_same": "Identical",
+        "content_same": "Unchanged",
+        "content_close": "Nearly the same",
+        "content_different": "Different",
+        "explain_match": "Forwarded messages pick up extra spaces, emoji and invisible characters, and those change the message character by character. We compare the wording itself, so a message that has been passed along still matches what the company sent.",
+        "explain_near": "The wording is close to an official message but not close enough to call it the same. Scammers often copy a real notice and change the amount, the deadline or the link, which is exactly what this looks like.",
+        "explain_miss": "We compared this wording against every message issuers have published. None of them says this, so it did not come from them."
+      },
+      "document": {
+        "file_label": "The file",
+        "content_label": "The words inside",
+        "file_changed": "Rewritten",
+        "file_same": "Untouched",
+        "content_same": "Unchanged",
+        "content_close": "Nearly the same",
+        "content_different": "Different",
+        "explain_match": "Re-saving or re-printing a document changes the file itself, so we read the words inside it and compare those instead. The wording here matches what the company filed.",
+        "explain_near": "The wording is close to a real filing but not the same. Altering a figure in a genuine document produces exactly this result, so we do not call it verified.",
+        "explain_miss": "We read the words inside and compared them against every document issuers have filed. Nothing they have filed says this."
+      },
+      "video": {
+        "file_label": "The file",
+        "content_label": "The footage",
+        "file_changed": "Rewritten",
+        "file_same": "Untouched",
+        "content_same": "Unchanged",
+        "content_close": "Nearly the same",
+        "content_different": "Different",
+        "explain_match": "Sharing a video re-compresses it, which rewrites the whole file. We take still frames from across the video and compare each one, so a re-shared copy still matches.",
+        "explain_near": "Some frames line up with an official video, but not enough of them to call it the same recording.",
+        "explain_miss": "We took frames from across this video and compared them against every video issuers have published. None of them match."
+      }
+    }
   },
   "reasons": {
     "SIG_CHAIN_VALID": "Digital signature chain is valid and the signing key was active at the time.",

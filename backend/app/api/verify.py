@@ -67,8 +67,10 @@ from app.pipeline.verdict import (
     Candidate,
     Decision,
     DecisionInput,
+    DecisionRule,
     MatchThresholds,
     QueryHashes,
+    RegistryMatch,
     ReasonCode,
     Verdict as VerdictEnum,
     decide,
@@ -208,9 +210,77 @@ def _downgrade_if_key_revoked(db: Session, decision: Decision) -> Decision:
     if not any(k is not None and k.status == KeyStatus.revoked for k in keys):
         return decision
     decision.verdict = VerdictEnum.VERIFIED_NOTICE
+    decision.rule = DecisionRule.REGISTRY_MATCH_KEY_REVOKED
     if ReasonCode.KEY_REVOKED_AFTER_SIGNING not in decision.reasons:
         decision.reasons.append(ReasonCode.KEY_REVOKED_AFTER_SIGNING)
     return decision
+
+
+_MAX_REGISTERED_TEXT = 1200
+
+
+def _published_text(db: Session, comm_id: uuid.UUID) -> str | None:
+    """The wording a published communication actually carries — its canonical
+    text, or the words extracted from its stored file."""
+    comm = db.get(Communication, comm_id)
+    if comm is None or comm.status not in (CommStatus.published, CommStatus.revoked):
+        return None
+    if comm.canonical_text:
+        return comm.canonical_text
+    if comm.artifact is None:
+        return None
+    path = Path(comm.artifact.storage_path)
+    if not path.is_file():
+        return None
+    if path.suffix == ".txt":
+        return path.read_text(encoding="utf-8", errors="replace")
+    if path.suffix == ".pdf":
+        try:
+            return "".join(page.extract_text() or "" for page in PdfReader(str(path)).pages)
+        except Exception:
+            return None
+    return None
+
+
+def _figures_were_altered(db: Session, match, query_text: str) -> bool:
+    """True when the wording matches a published item but the NUMBERS differ.
+
+    This is the doctored-filing signature. SimHash is tolerant by design so
+    that a forwarded message still matches after emoji and whitespace are
+    injected — but that same tolerance let a filing through with its revenue
+    figure rewritten (measured: 2 bits of movement against a threshold of 6).
+    Forwarding never edits numbers; tampering is precisely an edit of numbers,
+    so they are compared exactly.
+    """
+    if match.kind != "simhash" or match.candidate is None or not query_text.strip():
+        return False
+    published = _published_text(db, match.candidate.communication_id)
+    if not published:
+        return False
+    return hashing.numeric_tokens(query_text) != hashing.numeric_tokens(published)
+
+
+def _attach_registered_text(db: Session, evidence: MatchEvidence) -> None:
+    """Fill in the published wording behind a text/document match.
+
+    Only ever the issuer's own published text, never anything the user sent,
+    and only for a communication that is already public.
+    """
+    if not evidence.registered_communication_id:
+        return
+    try:
+        comm = db.get(Communication, uuid.UUID(evidence.registered_communication_id))
+    except ValueError:
+        return
+    if comm is None or comm.status not in (CommStatus.published, CommStatus.revoked):
+        return
+    text = comm.canonical_text
+    if not text and comm.artifact is not None:
+        path = Path(comm.artifact.storage_path)
+        if path.suffix == ".txt" and path.is_file():
+            text = path.read_text(encoding="utf-8", errors="replace")
+    if text:
+        evidence.registered_text = text[:_MAX_REGISTERED_TEXT]
 
 
 def _revoked_key_date(db: Session, decision: Decision) -> str | None:
@@ -333,6 +403,7 @@ def _run_verification(
 
     # ---- stage 3: registry match ----
     t0 = time.monotonic()
+    extra_reasons: list[ReasonCode] = []
     thresholds = MatchThresholds(
         phash_match_max_dist=settings.phash_match_max_dist,
         phash_near_max_dist=settings.phash_near_max_dist,
@@ -341,9 +412,30 @@ def _run_verification(
         simhash_match_max_dist=settings.simhash_match_max_dist,
     )
     registry_match = match_registry(query_hashes, _load_candidates(db), thresholds)
+
+    # A wording match whose figures don't agree is not a match at all — it is
+    # a doctored copy. Applied here rather than inside match_registry so the
+    # matcher stays a pure hash comparison, and so the reason surfaces as
+    # TAMPERED_CONTENT (an escalating signal) rather than a silent miss.
+    figures_altered = _figures_were_altered(db, registry_match, combined_text)
+    if figures_altered:
+        registry_match = RegistryMatch(
+            kind="none",
+            closest=registry_match.candidate,
+            closest_algorithm="simhash64",
+            detail="wording matched but figures differ",
+        )
+        extra_reasons.append(ReasonCode.TAMPERED_CONTENT)
+
     # Built from comparisons match_registry already made; explains the result,
     # never feeds back into it (see pipeline/evidence.py).
-    match_evidence = build_match_evidence(query_hashes, registry_match, thresholds)
+    match_evidence = build_match_evidence(
+        query_hashes, registry_match, thresholds, ingest_result.kind.value
+    )
+    if match_evidence is not None and match_evidence.content_kind in ("text", "document"):
+        # Show the wording the issuer actually published, so a text result gets
+        # the same side-by-side treatment an image does.
+        _attach_registered_text(db, match_evidence)
     match_key = (
         "registry_none" if registry_match.kind == "none"
         else "registry_near" if registry_match.kind == "near"
@@ -364,10 +456,9 @@ def _run_verification(
         phash_match_max_dist=settings.phash_match_max_dist,
     )
 
-    extra_reasons: list[ReasonCode] = []
     if email_parsed is not None:
         email_reasons = email_reason_codes(email_parsed, registered_domains)
-        extra_reasons = [ReasonCode(c) for c in email_reasons.codes]
+        extra_reasons.extend(ReasonCode(c) for c in email_reasons.codes)
         if email_reasons.domain_lookalike_of:
             # From-domain lookalike (spec §13) is a fraud-positive, same as an
             # in-body lookalike link — analyze_risk() never sees the From:

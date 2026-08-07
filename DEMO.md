@@ -115,16 +115,26 @@ see it hash match (✅ Verified). Then open the PDF, change the "Revenue
 from operations" figure (`9,588.18` → anything else), save it, and submit
 the modified copy with the same claimed sender.
 
-Expect **⚠️ Caution — cannot be confirmed** (`OFFICIAL_CLAIM_UNVERIFIED`),
-*not* a red "high risk" card. This is a correction from the original build
-spec's draft narration, verified against the actual (already gate-tested,
-Epic 4) verdict engine: a claim with no registry match and no *additional*
-fraud signal (no lookalike domain, no blacklist hit, no tampered
-signature) lands on "caution," not "likely fake"; `PAYMENT_ASK` alone
-isn't enough to flip it. This is arguably the more honest result: the
-system isn't inventing confidence it doesn't have. Narrate it as "claims
-to be official, doesn't match anything we've verified, treat with
-suspicion" rather than promising a red card here.
+Expect **🚨 High risk — likely fake** (`LIKELY_FAKE`), with
+`TAMPERED_CONTENT` among the reasons and the card's "Why this answer"
+explaining that the wording matches a published filing but the figures do
+not.
+
+This is worth narrating carefully, because it is the strongest thing in
+the demo. The file differs from the published one, but so does any
+re-saved copy — that alone proves nothing. What convicts it is that the
+*wording* still matches a real Kumaon Metals filing while the *numbers*
+do not. Forwarding never edits numbers; altering a figure is precisely an
+edit of numbers.
+
+A ready-made doctored copy ships as
+`fixtures/generated/filing_kumaon_q1_TAMPERED.pdf` if you would rather not
+edit a PDF live.
+
+*(Prior builds returned "cannot be confirmed" here, and earlier still this
+case passed as ✅ Verified — a doctored figure moves the text fingerprint
+by only 2 bits against a threshold of 6. `scripts/acceptance.py` caught
+that; the numeric guard fixes it. See PROGRESS.md.)*
 
 ## 5. Verify: the fake IPO SMS
 

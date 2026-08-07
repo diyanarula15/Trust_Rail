@@ -77,17 +77,30 @@ def _bad(status: int, code: str, message: str) -> JSONResponse:
 def _make_artifact(
     data: bytes, mime: str, channel: CommChannel, canonical_text: str | None
 ) -> Artifact:
-    """Hash at draft time (spec §9): sha256 always; perceptual by kind."""
+    """Hash at draft time (spec §9): sha256 always; perceptual by kind.
+
+    Content is sniffed rather than inferred from `channel`. A "filing" is not
+    necessarily a PDF — plenty of exchange announcements are plain text
+    (trading-window intimations, settlement notices), and feeding those bytes
+    to PdfReader because the channel said "filing" raised
+    `PdfStreamError: Stream has ended unexpectedly`. Found by the feed
+    ingester; the issuer console could always hit it too by picking channel
+    "filing" and uploading anything that isn't a PDF.
+    """
     settings = get_settings()
     sha = hashing.sha256_hex(data)
     art_dir = settings.artifact_dir
     art_dir.mkdir(parents=True, exist_ok=True)
-    ext = {
-        CommChannel.image: ".jpg",
-        CommChannel.video: ".mp4",
-        CommChannel.pdf: ".pdf",
-        CommChannel.filing: ".pdf",
-    }.get(channel, ".txt")
+
+    is_pdf = data[:5] == b"%PDF-"
+    if channel == CommChannel.image:
+        ext = ".jpg"
+    elif channel == CommChannel.video:
+        ext = ".mp4"
+    elif is_pdf:
+        ext = ".pdf"
+    else:
+        ext = ".txt"
     storage = art_dir / f"{sha}{ext}"
     storage.write_bytes(data)
 
@@ -98,10 +111,18 @@ def _make_artifact(
         pdq256 = hashing.pdq256_hex(data)
     elif channel == CommChannel.video:
         video_frames = media.extract_frame_phashes(storage)
-    elif channel in (CommChannel.pdf, CommChannel.filing):
-        text = "".join(page.extract_text() or "" for page in PdfReader(storage).pages)
+    elif is_pdf:
+        try:
+            text = "".join(page.extract_text() or "" for page in PdfReader(storage).pages)
+        except Exception:  # a malformed PDF must not take the publish down
+            text = ""
         if text.strip():
             simhash64 = hashing.simhash64_hex(text)
+    elif channel in (CommChannel.pdf, CommChannel.filing, CommChannel.email, CommChannel.social):
+        # text-bodied filing or notice: fingerprint the words directly
+        body = data.decode("utf-8", errors="replace")
+        if body.strip():
+            simhash64 = hashing.simhash64_hex(body)
     if canonical_text:
         simhash64 = hashing.simhash64_hex(canonical_text)
 

@@ -141,7 +141,9 @@ function ImagePane({ label, src }: { label: string; src: string | null }) {
   );
 }
 
-/** The plain reading: two facts and the sentence that reconciles them. */
+/** The plain reading: two facts and the sentence that reconciles them.
+ * Labels come from the API and are worded for what was actually sent —
+ * "the picture" for an image, "the wording" for a message. */
 function PlainVerdictLines({
   copy,
   accent,
@@ -154,16 +156,50 @@ function PlainVerdictLines({
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       <div className="rounded border border-hairline bg-card px-3 py-2">
-        <div className="text-[11px] uppercase tracking-wide text-info">The file</div>
+        <div className="text-[11px] uppercase tracking-wide text-info">
+          {copy.plain_file_label}
+        </div>
         <div className={`mt-0.5 text-sm font-medium ${sameFile ? accent.text : "text-ink"}`}>
           {copy.plain_file_line}
         </div>
       </div>
       <div className="rounded border border-hairline bg-card px-3 py-2">
-        <div className="text-[11px] uppercase tracking-wide text-info">What it shows</div>
+        <div className="text-[11px] uppercase tracking-wide text-info">
+          {copy.plain_content_label}
+        </div>
         <div className={`mt-0.5 text-sm font-medium ${accent.text}`}>
           {copy.plain_content_line}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Wording comparison — the text equivalent of the two image panes. */
+function TextPanes({
+  submitted,
+  registered,
+  copy,
+}: {
+  submitted: string | null;
+  registered: string;
+  copy: EvidenceCopy;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {submitted && (
+        <div className="min-w-0">
+          <div className="text-xs text-info">{copy.submitted_label}</div>
+          <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-hairline bg-card p-2 text-xs leading-relaxed text-ink">
+            {submitted}
+          </p>
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="text-xs text-info">{copy.registered_label}</div>
+        <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-hairline bg-card p-2 text-xs leading-relaxed text-ink">
+          {registered}
+        </p>
       </div>
     </div>
   );
@@ -173,10 +209,12 @@ export function MatchEvidence({
   evidence,
   copy,
   submittedImageUrl,
+  submittedText,
 }: {
   evidence: Evidence;
   copy: EvidenceCopy;
   submittedImageUrl?: string | null;
+  submittedText?: string | null;
 }) {
   const [technicalOpen, setTechnicalOpen] = useState(false);
   const accent = ACCENT[evidence.outcome];
@@ -193,11 +231,21 @@ export function MatchEvidence({
         {copy.plain_title || copy.title}
       </h4>
 
-      {(submittedImageUrl || registeredSrc) && (
-        <div className="mt-3 flex gap-3">
-          <ImagePane label={copy.submitted_label} src={submittedImageUrl ?? null} />
-          <ImagePane label={copy.registered_label} src={registeredSrc} />
+      {evidence.registered_text ? (
+        <div className="mt-3">
+          <TextPanes
+            submitted={submittedText ?? null}
+            registered={evidence.registered_text}
+            copy={copy}
+          />
         </div>
+      ) : (
+        (submittedImageUrl || registeredSrc) && (
+          <div className="mt-3 flex gap-3">
+            <ImagePane label={copy.submitted_label} src={submittedImageUrl ?? null} />
+            <ImagePane label={copy.registered_label} src={registeredSrc} />
+          </div>
+        )
       )}
 
       <div className="mt-3">

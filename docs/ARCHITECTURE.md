@@ -136,9 +136,12 @@ sequenceDiagram
 | Plain-language copy | **Real, and localized** | Both registers live in `i18n/{en,hi}.json` and are produced by `channels/render.py`, so §12.1 holds: the frontend renders wording, never invents it |
 | Match evidence panel | **Real** | `pipeline/evidence.py` reports the actual hashes, bit distances and thresholds the match was decided on. The 8x8 grid is the phash64 itself (flattened DCT-sign bits), not an illustration of it. Explanation-only: `TestEvidenceDoesNotAffectDecisions` asserts verdicts are identical with and without it |
 | Rule-based claim/risk detection | **Real** | Regex + rapidfuzz + Levenshtein, not a black box |
+| Strict escalation policy | **Real, and asymmetric by design** | Any fraud signal (blacklist, lookalike domain, homoglyph, tampered signature/content, risky URL, payment demand) escalates to LIKELY_FAKE whether or not an official claim is present. Absence of a registry match never escalates — that is always "cannot confirm", since a genuine issuer outside the registry lands there |
+| Verdict explanation | **Real** | Every `Decision` records which of the nine §8.6 rules fired and which signals escalated it; `render.py` renders that as a plain localized sentence on the card |
 | PDQ perceptual hash, C2PA embed/read | **Optional, absent by default** | Wrapped in try/except; core path works without either |
 | LLM-assisted claim extraction | **Optional, off by default** | `LLM_ENABLED` flag; rule-based path is the required baseline and what's actually exercised in this build |
-| WhatsApp channel adapter | **Not built** (Epic 11, explicitly not authorized this round) | `channels/whatsapp.py` + webhook are flag-gated stubs at most |
+| Passive feed ingestion | **Real** | `app/ingest/` polls exchange-filing and DLT-SMS feeds and publishes through the same envelope, signing and transparency-log path as the console. Ships pointed at sample feeds in `fixtures/feeds/`; set `EXCHANGE_FEED_URL` / `DLT_SMS_FEED_URL` to poll a live endpoint instead. Provenance (`source`, `external_id`) is recorded in each log entry |
+| WhatsApp channel adapter | **Built, needs credentials** | `channels/whatsapp.py` + `api/webhooks_whatsapp.py`: HMAC-SHA256 webhook signature verification, media download, and replies rendered from the same `render.py` payload the web UI uses. Flag-gated off (`CHANNEL_WHATSAPP_ENABLED`); inert without real Meta credentials |
 | SEBI Check integration | **Placeholder URL** | `SEBI_CHECK_URL=#` (button exists, doesn't link anywhere real yet) |
 | Entities, SEBI reg numbers, all demo content | **Fictional** | No real companies, tickers, or persons anywhere |
 | Demo CEO video | **Real footage** | The project owner's own recording, never a synthesized or borrowed likeness (see PROGRESS.md for why this is a hard line, not a preference) |
@@ -157,9 +160,13 @@ prototype:
   frame) is the production-grade version of this prototype's
   1fps-phash-list approach, with better resilience to reframing and speed
   changes.
-- **Real NSE/BSE/exchange ingestion**: this prototype's registry is
-  seeded fixtures; production would ingest actual corporate announcements
-  and filings directly from exchange feeds, not a manual issuer console.
+- **Real NSE/BSE/exchange endpoints**: the ingestion path itself is built
+  (`app/ingest/`, adapters for exchange filings and DLT SMS templates), and
+  swapping the sample feed for a live one is a URL in the environment. What
+  is genuinely absent is a production credential and the field-mapping
+  confirmation any real feed integration needs. In a real deployment the
+  exchange would also sign its own feed and TrustRail would counter-sign,
+  rather than signing on the issuer's behalf with a key it holds.
 - **DLT/permissioned-ledger backing for the transparency log**: the
   current log is a single Postgres-backed Merkle tree with one registry
   signing key; a regulator-grade deployment would distribute trust across

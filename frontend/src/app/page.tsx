@@ -1,4 +1,5 @@
 import {
+  Activity,
   ShieldCheck,
   ShieldAlert,
   AlertTriangle,
@@ -76,6 +77,15 @@ const VERDICTS = [
 
 const FEATURES = [
   {
+    href: "/dashboard",
+    Icon: Activity,
+    accent: "border-seal",
+    iconColor: "text-seal",
+    title: "Dashboard",
+    body: "The whole system at a glance: how many messages have been checked and what the answers were, the four steps every check runs through, which scam campaigns are live, and the state of the tamper-proof record.",
+    cta: "Open the dashboard",
+  },
+  {
     href: "/verify",
     Icon: ShieldCheck,
     accent: "border-verified",
@@ -129,54 +139,61 @@ export default async function LandingPage() {
   const flagged = (totals["LIKELY_FAKE"] ?? 0) + (totals["OFFICIAL_CLAIM_UNVERIFIED"] ?? 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-16">
+    <div className="mx-auto max-w-6xl px-6 py-14 sm:py-20">
       {/* Hero */}
-      <section className="max-w-2xl">
-        <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card px-3 py-1 text-xs font-medium text-info">
-          <span className="h-1.5 w-1.5 rounded-full bg-verified" />
-          SEBI Securities Market TechSprint 2026 · prototype
-        </div>
-        <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-tight text-ink">
-          Forward it. We&rsquo;ll tell you if the market actually said it.
-        </h1>
-        <p className="mt-5 text-lg leading-relaxed text-info">
-          Fake announcements, doctored filings and &ldquo;guaranteed
-          return&rdquo; schemes spread through WhatsApp faster than any
-          regulator can chase them. TrustRail answers one question, in seconds:{" "}
-          <span className="text-ink">
-            did a registered company really put this out?
-          </span>
-        </p>
-        <div className="mt-7 flex flex-wrap items-center gap-3">
-          <a
-            href="/verify"
-            className="inline-flex items-center gap-2 rounded bg-ink px-5 py-2.5 text-sm font-semibold text-paper hover:opacity-90"
-          >
-            Check a message <ArrowRight className="h-4 w-4" />
-          </a>
-          <a
-            href="/log"
-            className="rounded border border-hairline px-5 py-2.5 text-sm font-semibold text-ink hover:bg-card"
-          >
-            See the public record
-          </a>
+      <section className="grid gap-10 lg:grid-cols-[1.35fr_1fr] lg:items-center">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-info">
+            <span className="h-1.5 w-1.5 rounded-full bg-verified" />
+            SEBI TechSprint 2026 · prototype
+          </div>
+          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.03] tracking-tight text-ink sm:text-6xl">
+            Forward it.
+            <br />
+            <span className="text-seal">We&rsquo;ll tell you</span> if the market
+            actually said it.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-info">
+            Fake announcements, doctored filings and &ldquo;guaranteed
+            return&rdquo; schemes spread through WhatsApp faster than any
+            regulator can chase them. TrustRail answers one question, in
+            seconds:{" "}
+            <span className="font-medium text-ink">
+              did a registered company really put this out?
+            </span>
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a
+              href="/verify"
+              className="inline-flex items-center gap-2 rounded bg-ink px-6 py-3 text-sm font-semibold text-paper hover:opacity-90"
+            >
+              Check a message <ArrowRight className="h-4 w-4" />
+            </a>
+            <a
+              href="/dashboard"
+              className="rounded border border-hairline bg-card px-6 py-3 text-sm font-semibold text-ink hover:bg-paper"
+            >
+              See it working
+            </a>
+          </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-2 font-mono text-sm text-info">
-          <span>
-            <span className="text-ink">{totalVerifications}</span> checks in the
-            last 14 days
-          </span>
-          <span>
-            <span className="text-ink">{flagged}</span> flagged as unconfirmed
-            or fake
-          </span>
+        {/* Live counters, given real weight rather than a footnote */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="rounded border border-l-4 border-hairline border-l-ink bg-card px-5 py-4">
+            <div className="font-mono text-4xl font-medium text-ink">{totalVerifications}</div>
+            <div className="mt-1 text-sm text-info">checks in the last 14 days</div>
+          </div>
+          <div className="rounded border border-l-4 border-hairline border-l-fake bg-card px-5 py-4">
+            <div className="font-mono text-4xl font-medium text-fake">{flagged}</div>
+            <div className="mt-1 text-sm text-info">flagged as unconfirmed or fake</div>
+          </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="mt-20">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+      <section className="mt-20 border-t border-hairline pt-12">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           How it works
         </h2>
         <div className="mt-6 grid gap-5 md:grid-cols-3">
@@ -206,8 +223,8 @@ export default async function LandingPage() {
       </section>
 
       {/* The five answers */}
-      <section className="mt-20">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+      <section className="mt-20 border-t border-hairline pt-12">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           The five answers you can get
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-info">
@@ -233,8 +250,8 @@ export default async function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="mt-20">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+      <section className="mt-20 border-t border-hairline pt-12">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           What&rsquo;s in here
         </h2>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -259,7 +276,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Honesty note */}
-      <section className="mt-20 rounded border border-hairline bg-card p-6">
+      <section className="mt-20 rounded border border-l-4 border-hairline border-l-seal bg-card p-6 sm:p-8">
         <h2 className="font-display text-lg font-bold text-ink">
           What this is, honestly
         </h2>

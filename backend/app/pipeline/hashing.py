@@ -93,6 +93,22 @@ def simhash64_hex(text: str) -> str:
     return f"{value:016x}"
 
 
+_NUMERIC = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def numeric_tokens(text: str) -> set[str]:
+    """Every number in the text, comma-separators removed.
+
+    SimHash is deliberately tolerant, and on a long document that tolerance
+    is dangerous: a filing is ~150 token-trigrams, so altering one figure
+    moves the fingerprint by about 2 bits against a match threshold of 6 —
+    a doctored financial statement passed as genuine. Numbers are the one
+    thing forwarding never changes and tampering always does, so they get
+    compared exactly rather than fuzzily.
+    """
+    return {m.group(0).replace(",", "") for m in _NUMERIC.finditer(text or "")}
+
+
 def video_match_ratio(query_frames: list[str], registered_frames: list[str], max_dist: int) -> float:
     """Fraction of query frame hashes matching ANY registered frame hash
     within max_dist (spec §8.3 VIDEO_FRAME_MATCH_RATIO semantics)."""

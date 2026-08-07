@@ -3,7 +3,7 @@ PY := backend/.venv/bin/python
 PNPM_HOME ?= $(HOME)/Library/pnpm
 PNPM := $(PNPM_HOME)/pnpm
 
-.PHONY: up install migrate seed api web check eval demo-reset
+.PHONY: up install migrate seed api web check eval fixtures ingest ingest-watch accept demo-reset
 
 up:
 	docker compose up -d --wait
@@ -32,5 +32,19 @@ check:
 eval:
 	cd backend && .venv/bin/python -m scripts.evaluate
 
+fixtures:
+	cd backend && .venv/bin/python -m scripts.gen_fixtures
+
+# Poll the configured feeds once. Safe to repeat: duplicates are skipped.
+ingest:
+	cd backend && .venv/bin/python -m scripts.ingest_feeds
+
+ingest-watch:
+	cd backend && .venv/bin/python -m scripts.ingest_feeds --watch
+
+# Does it give the RIGHT answer, case by case? Needs the API running.
+accept:
+	cd backend && .venv/bin/python -m scripts.acceptance
+
 demo-reset:
-	cd backend && .venv/bin/alembic downgrade base && .venv/bin/alembic upgrade head && .venv/bin/python -m scripts.seed
+	cd backend && .venv/bin/alembic downgrade base && .venv/bin/alembic upgrade head && .venv/bin/python -m scripts.gen_fixtures && .venv/bin/python -m scripts.seed && .venv/bin/python -m scripts.ingest_feeds --quiet

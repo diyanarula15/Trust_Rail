@@ -1,0 +1,52 @@
+[
+  {
+    "template_id": "1307161234567890123",
+    "header": "MERIDN",
+    "pe_id": "1301160000000012345",
+    "template_name": "Margin shortfall intimation",
+    "template": "MERIDN: Margin shortfall in your account. Add funds by T+1 via the official app. Never share OTPs. — Meridian Broking Ltd, SEBI reg DEMO-INZ-000123",
+    "template_type": "transactional",
+    "registered_at": "2026-06-18T10:12:00+05:30",
+    "status": "approved"
+  },
+  {
+    "template_id": "1307161234567890456",
+    "header": "MERIDN",
+    "pe_id": "1301160000000012345",
+    "template_name": "Contract note ready",
+    "template": "MERIDN: Your contract note for today's trades is available in the official app. We never send payment links over SMS. — Meridian Broking Ltd",
+    "template_type": "transactional",
+    "registered_at": "2026-06-18T10:14:00+05:30",
+    "status": "approved"
+  },
+  {
+    "template_id": "1307161234567890789",
+    "header": "SUVRNA",
+    "pe_id": "1301160000000067890",
+    "template_name": "NAV daily update",
+    "template": "SUVRNA: NAV for Suvarna Bluechip Fund as on 10 Jul 2026: 84.31. Statement at suvarnamf.example. — Suvarna Mutual Fund",
+    "template_type": "transactional",
+    "registered_at": "2026-06-20T08:30:00+05:30",
+    "status": "approved"
+  },
+  {
+    "template_id": "1307161234567891011",
+    "header": "NDXIN",
+    "pe_id": "1301160000000099887",
+    "template_name": "Settlement holiday notice",
+    "template": "NDXIN: Settlement holiday on 17 Jul 2026. Pay-in/pay-out shifts to next working day. — National Demo Exchange",
+    "template_type": "service_explicit",
+    "registered_at": "2026-07-01T09:00:00+05:30",
+    "status": "approved"
+  },
+  {
+    "template_id": "1307161234567891213",
+    "header": "SURKSH",
+    "pe_id": "1301160000000055443",
+    "template_name": "KYC reverification reminder",
+    "template": "SURKSH: Your KYC is due for reverification. Complete it only through the official app or surakshasec.example. We never ask for OTPs or payments. — Suraksha Securities",
+    "template_type": "service_explicit",
+    "registered_at": "2026-07-03T15:45:00+05:30",
+    "status": "approved"
+  }
+]

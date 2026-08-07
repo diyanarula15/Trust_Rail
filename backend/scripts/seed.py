@@ -115,19 +115,26 @@ def seed_entities(db) -> list[Entity]:
 # §15.3 published communications: (entity, title, channel, impact, source)
 # source: filename in assets_input/ or ("text", body) for text-born comms.
 ASSET_DIR_NAME = "assets_input"
+# Media now comes from fixtures/generated/ (committed, produced by
+# `python -m scripts.gen_fixtures`) rather than owner-supplied files in
+# assets_input/. The originals there were real BSE/NSE filings from real
+# listed companies, which contradicted the project's own "no real companies"
+# claim and meant DEMO.md step 4 instructed doctoring a real issuer's
+# published financials. Generated fixtures are fictional end to end, and a
+# fresh clone can now seed and run the acceptance suite with no owner media.
+GENERATED_DIR_NAME = "fixtures/generated"
 EXPECTED_FILES = [
-    "filing1.pdf", "filing2.pdf", "filing3.pdf",
-    "image1.jpg", "image2.jpg", "image3.jpg",
-    "ceo_announcement.mp4",
+    "filing_kumaon_q1.pdf", "filing_kumaon_capex.pdf", "filing_nivara_annual.pdf",
+    "notice_meridian_margin.jpg", "notice_suvarna_nav.jpg", "notice_ndx_calendar.jpg",
 ]
 
 PUBLISH_PLAN: list[tuple[str, str, str, str, str | tuple[str, str]]] = [
-    ("Kumaon Metals Ltd", "Q1 FY27 results filing", "filing", "standard", "filing1.pdf"),
-    ("Kumaon Metals Ltd", "Board approval — capacity expansion", "filing", "market_moving", "filing2.pdf"),
-    ("Nivara Housing Finance", "Annual disclosure filing", "filing", "standard", "filing3.pdf"),
-    ("Meridian Broking Ltd", "New margin rules infographic", "image", "standard", "image1.jpg"),
-    ("Suvarna Mutual Fund", "Scheme performance summary", "image", "standard", "image2.jpg"),
-    ("National Demo Exchange (NDX)", "Trading calendar notice", "image", "standard", "image3.jpg"),
+    ("Kumaon Metals Ltd", "Q1 FY27 results filing", "filing", "standard", "filing_kumaon_q1.pdf"),
+    ("Kumaon Metals Ltd", "Board approval — capacity expansion", "filing", "market_moving", "filing_kumaon_capex.pdf"),
+    ("Nivara Housing Finance", "Annual disclosure filing", "filing", "standard", "filing_nivara_annual.pdf"),
+    ("Meridian Broking Ltd", "New margin rules infographic", "image", "standard", "notice_meridian_margin.jpg"),
+    ("Suvarna Mutual Fund", "Scheme performance summary", "image", "standard", "notice_suvarna_nav.jpg"),
+    ("National Demo Exchange (NDX)", "Trading calendar notice", "image", "standard", "notice_ndx_calendar.jpg"),
     # NOTE: the CEO announcement video is deliberately NOT auto-published here.
     # DEMO.md step 1 publishes it live (draft -> sign -> co-sign) so the
     # judges watch the log root update in real time — publishing it twice
@@ -164,14 +171,15 @@ def seed_communications(db, repo_root: Path) -> int:
 
     from app.main import app
 
-    asset_dir = repo_root / ASSET_DIR_NAME
+    asset_dir = repo_root / GENERATED_DIR_NAME
     missing = [f for f in EXPECTED_FILES if not (asset_dir / f).exists()]
     if missing:
         print("\n" + "!" * 72, file=sys.stderr)
-        print("SEED §15.3 FAILED — missing owner media in assets_input/:", file=sys.stderr)
+        print("SEED §15.3 FAILED — generated fixtures are missing:", file=sys.stderr)
         for f in missing:
             print(f"  MISSING  {asset_dir / f}", file=sys.stderr)
-        print("Drop the files above into assets_input/ and re-run `make seed`.", file=sys.stderr)
+        print("\nRun this first, it takes a second and needs no owner media:", file=sys.stderr)
+        print("    python -m scripts.gen_fixtures", file=sys.stderr)
         print("!" * 72 + "\n", file=sys.stderr)
         if os.environ.get("SEED_ALLOW_MISSING_ASSETS") == "1":
             print("SEED_ALLOW_MISSING_ASSETS=1 → continuing with a partial world (dev only).")
@@ -293,10 +301,10 @@ def print_cheat_sheet(entities: list[Entity]) -> None:
     print("\n" + "=" * 72)
     print("DEMO CHEAT SHEET")
     print("=" * 72)
-    print("Forward these from assets_input/ in the /verify simulator:")
-    print("  filing1.pdf        -> Kumaon Metals Q1 FY27 results (has the revenue figure)")
-    print("  image1/2/3.jpg     -> Meridian / Suvarna / NDX notices")
-    print("  ceo_announcement.mp4 -> Kumaon Metals CEO announcement (market_moving)")
+    print("Forward these from fixtures/generated/ in the /verify simulator:")
+    print("  filing_kumaon_q1.pdf        -> Kumaon Metals Q1 results (has the revenue figure to tamper with)")
+    print("  notice_*.jpg                -> Meridian / Suvarna / NDX notices")
+    print("  assets_input/ceo_announcement.mp4 -> CEO announcement (published live in DEMO.md step 1)")
     print("Personas (X-Demo-Persona = key id, see /api/registry/entities):")
     for name in ("Meridian Broking Ltd", "Kumaon Metals Ltd", "Suvarna Mutual Fund"):
         e = by_name.get(name)

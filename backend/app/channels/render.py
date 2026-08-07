@@ -81,12 +81,27 @@ class EvidenceCopy(BaseModel):
     scale_summary: str | None = None
     frames_summary: str | None = None
 
-    # plain register — the two-line headline a non-specialist reads first
+    # plain register — the two-line headline a non-specialist reads first,
+    # worded for whatever they actually sent (picture / wording / footage)
     plain_title: str = ""
+    plain_file_label: str = ""
+    plain_content_label: str = ""
     plain_file_line: str = ""
     plain_content_line: str = ""
     plain_explain: str = ""
     technical_toggle: str = ""
+
+
+class WhyPayload(BaseModel):
+    """The reasoning behind the verdict: which rule fired, and what escalated
+    it. Strictness is only defensible if it can be read back."""
+
+    label: str
+    rule: str  # machine code, for the technical view
+    explanation: str
+    escalated_by_label: str = ""
+    escalated_by: list[str] = []  # plain strings for the signals that escalated
+    strict_note: str = ""
 
 
 class CardPayload(BaseModel):
@@ -94,6 +109,7 @@ class CardPayload(BaseModel):
     verdict: str
     headline: str
     body: str
+    why: WhyPayload | None = None
     # Plain-language register for a non-specialist reader. Same verdict, same
     # facts, no jargon — the card leads with these and keeps the formal
     # strings above for the technical view (spec §12.1: both come from i18n,
@@ -195,6 +211,21 @@ def _plain_reason_string(strings: dict[str, Any], code: str) -> str:
     return plain if plain else _reason_string(strings, code)
 
 
+def _why(strings: dict[str, Any], d: Decision) -> WhyPayload | None:
+    block = strings.get("why")
+    if not block:
+        return None
+    escalated = [_plain_reason_string(strings, c.value) for c in d.escalating_reasons]
+    return WhyPayload(
+        label=block["label"],
+        rule=d.rule.value,
+        explanation=block.get("rules", {}).get(d.rule.value, ""),
+        escalated_by_label=block.get("escalated_by", "") if escalated else "",
+        escalated_by=escalated,
+        strict_note=block.get("strict_note", "") if escalated else "",
+    )
+
+
 def stage_copy(locale: str, stage: str, detail_key: str | None = None, **fmt: Any) -> tuple[str, str]:
     """Localized (label, detail) for one live-check stage. Lives here because
     §12.1 makes this module the only place machine outcomes become words."""
@@ -240,22 +271,23 @@ def _evidence_copy(strings: dict[str, Any], ev: MatchEvidence) -> EvidenceCopy |
         if ev.hash_comparison is None:
             fingerprint_summary = block["fingerprint_video"]
 
-    # The plain register reduces the whole comparison to the one sentence that
-    # actually explains perceptual matching: the file changed, the content
-    # didn't. Everything numeric stays available behind the technical toggle.
+    # The plain register reduces the whole comparison to one contrast: the
+    # bytes changed, the content didn't. How that is worded depends on what
+    # the reader actually sent — describing a forwarded SMS in terms of "the
+    # picture" is nonsense, so the copy is chosen per content kind.
+    kinds = block.get("kinds", {})
+    k = kinds.get(ev.content_kind) or kinds.get("image") or {}
+
     content_line = {
-        "match": block["plain_content_same"],
-        "near": block["plain_content_close"],
-        "miss": block["plain_content_different"],
+        "match": k.get("content_same", ""),
+        "near": k.get("content_close", ""),
+        "miss": k.get("content_different", ""),
     }[ev.outcome]
-    if ev.video_comparison is not None and ev.hash_comparison is None:
-        plain_explain = block["plain_explain_video"]
-    else:
-        plain_explain = {
-            "match": block["plain_explain_match"],
-            "near": block["plain_explain_near"],
-            "miss": block["plain_explain_miss"],
-        }[ev.outcome]
+    plain_explain = {
+        "match": k.get("explain_match", ""),
+        "near": k.get("explain_near", ""),
+        "miss": k.get("explain_miss", ""),
+    }[ev.outcome]
 
     return EvidenceCopy(
         title=block["title"],
@@ -268,8 +300,10 @@ def _evidence_copy(strings: dict[str, Any], ev: MatchEvidence) -> EvidenceCopy |
         scale_summary=scale_summary,
         frames_summary=frames_summary,
         plain_title=block["plain_title"],
+        plain_file_label=k.get("file_label", ""),
+        plain_content_label=k.get("content_label", ""),
         plain_file_line=(
-            block["plain_file_same"] if ev.sha256_identical else block["plain_file_changed"]
+            k.get("file_same", "") if ev.sha256_identical else k.get("file_changed", "")
         ),
         plain_content_line=content_line,
         plain_explain=plain_explain,
@@ -345,6 +379,7 @@ def render_verdict(ctx: RenderContext) -> CardPayload:
         verdict=d.verdict.value,
         headline=v["title"],
         body=body,
+        why=_why(strings, d),
         plain_headline=plain_v.get("title", v["title"]),
         plain_body=(
             plain_v["body"].format_map(_Defaulting(plain_fmt)) if plain_v.get("body") else body

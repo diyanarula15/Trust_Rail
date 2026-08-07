@@ -122,8 +122,46 @@ class DecisionInput(BaseModel):
     extra_reasons: list[ReasonCode] = []  # e.g. email-path DKIM codes
 
 
+class DecisionRule(str, enum.Enum):
+    """Which branch of §8.6 produced the verdict.
+
+    Recorded so the answer can explain *why* it is what it is, rather than
+    only listing signals and leaving the reader to infer the rule. Strictness
+    is only meaningful if it is legible.
+    """
+
+    SIGNATURE_VALID = "SIGNATURE_VALID"
+    SIGNATURE_VALID_KEY_REVOKED = "SIGNATURE_VALID_KEY_REVOKED"
+    REGISTRY_MATCH = "REGISTRY_MATCH"
+    REGISTRY_MATCH_KEY_REVOKED = "REGISTRY_MATCH_KEY_REVOKED"
+    MATCHED_WITHDRAWN = "MATCHED_WITHDRAWN"
+    CLAIM_WITH_FRAUD_SIGNALS = "CLAIM_WITH_FRAUD_SIGNALS"
+    CLAIM_WITHOUT_MATCH = "CLAIM_WITHOUT_MATCH"
+    FRAUD_SIGNALS_NO_CLAIM = "FRAUD_SIGNALS_NO_CLAIM"
+    NO_CLAIM = "NO_CLAIM"
+
+
+# Signals that escalate to LIKELY_FAKE under the strict policy. Absence of
+# proof is deliberately NOT in here: failing to match the registry means "we
+# cannot confirm", never "this is a scam" — otherwise every genuine message
+# from an issuer outside the registry gets called fraud.
+_ESCALATING = {
+    ReasonCode.BLACKLIST_MATCH,
+    ReasonCode.LOOKALIKE_DOMAIN,
+    ReasonCode.HOMOGLYPH_ENTITY,
+    ReasonCode.TAMPERED_SIGNATURE,
+    ReasonCode.TAMPERED_CONTENT,
+    ReasonCode.URL_RISK,
+    ReasonCode.PAYMENT_ASK,
+}
+
+
 class Decision(BaseModel):
     verdict: Verdict
+    rule: DecisionRule = DecisionRule.NO_CLAIM
+    # The specific signals that drove an escalation, so the card can name them
+    # instead of asserting a conclusion.
+    escalating_reasons: list[ReasonCode] = []
     reasons: list[ReasonCode]
     matched_communication_id: uuid.UUID | None = None
     matched_entity_id: uuid.UUID | None = None  # proven issuer only
@@ -242,7 +280,8 @@ def decide(inp: DecisionInput) -> Decision:
                 reasons.append(ReasonCode.SIG_CHAIN_VALID)
                 trace.append(TraceStep(stage="hard_binding", outcome="sig_chain_valid",
                                        ms=int((time.monotonic() - t0) * 1000)))
-                d = Decision(verdict=Verdict.VERIFIED, reasons=reasons, trace=trace,
+                d = Decision(verdict=Verdict.VERIFIED, rule=DecisionRule.SIGNATURE_VALID,
+                             reasons=reasons, trace=trace,
                              matched_entity_id=inp.envelope_entity_id, campaign=campaign)
                 _guard(d.verdict, d.reasons)
                 return d
@@ -250,7 +289,9 @@ def decide(inp: DecisionInput) -> Decision:
                 reasons.append(ReasonCode.KEY_REVOKED_AFTER_SIGNING)
                 trace.append(TraceStep(stage="hard_binding", outcome="key_revoked_after_signing",
                                        ms=int((time.monotonic() - t0) * 1000)))
-                d = Decision(verdict=Verdict.VERIFIED_NOTICE, reasons=reasons, trace=trace,
+                d = Decision(verdict=Verdict.VERIFIED_NOTICE,
+                             rule=DecisionRule.SIGNATURE_VALID_KEY_REVOKED,
+                             reasons=reasons, trace=trace,
                              matched_entity_id=inp.envelope_entity_id, campaign=campaign)
                 _guard(d.verdict, d.reasons)
                 return d
@@ -274,7 +315,8 @@ def decide(inp: DecisionInput) -> Decision:
             trace.append(TraceStep(stage="registry_match", outcome=m.detail.replace(" ", "_"),
                                    ms=int((time.monotonic() - t0) * 1000)))
             trace.append(TraceStep(stage="claims_risk", outcome="skipped_short_circuit", ms=0))
-            d = Decision(verdict=Verdict.VERIFIED, reasons=reasons, trace=trace,
+            d = Decision(verdict=Verdict.VERIFIED, rule=DecisionRule.REGISTRY_MATCH,
+                         reasons=reasons, trace=trace,
                          matched_communication_id=m.candidate.communication_id,
                          matched_entity_id=m.candidate.entity_id, campaign=campaign)
             _guard(d.verdict, d.reasons)
@@ -283,7 +325,9 @@ def decide(inp: DecisionInput) -> Decision:
         trace.append(TraceStep(stage="registry_match", outcome="matched_revoked_comm",
                                ms=int((time.monotonic() - t0) * 1000)))
         trace.append(TraceStep(stage="claims_risk", outcome="skipped_short_circuit", ms=0))
-        return Decision(verdict=Verdict.OFFICIAL_CLAIM_UNVERIFIED, reasons=reasons, trace=trace,
+        return Decision(verdict=Verdict.OFFICIAL_CLAIM_UNVERIFIED,
+                        rule=DecisionRule.MATCHED_WITHDRAWN,
+                        reasons=reasons, trace=trace,
                         matched_communication_id=m.candidate.communication_id,
                         matched_entity_id=m.candidate.entity_id, campaign=campaign)
     near = m.kind == "near"
@@ -315,20 +359,25 @@ def decide(inp: DecisionInput) -> Decision:
     elif claims.claim_strength == "weak":
         reasons.append(ReasonCode.ENTITY_CLAIM_WEAK)
 
-    fraud_positive = (
-        risk.fraud_positive
-        or ReasonCode.TAMPERED_SIGNATURE in reasons
-        or ReasonCode.TAMPERED_CONTENT in reasons
-    )
+    # Strict policy: ANY fraud signal escalates, whether or not the content
+    # also claims to be official. The previous rule only escalated a bare
+    # URL/blacklist hit when no claim was present, so adding an official-
+    # sounding claim — strictly more dangerous — produced a *softer* verdict.
+    escalating = [c for c in _ESCALATING if c in reasons]
+    fraud_positive = bool(escalating) or risk.fraud_positive or risk.url_high
 
     if claims.claim_strength in ("strong", "weak"):
-        verdict = Verdict.LIKELY_FAKE if fraud_positive else Verdict.OFFICIAL_CLAIM_UNVERIFIED
-        outcome = "claim_plus_fraud_positive" if fraud_positive else "claim_without_match"
-    elif any(s.code == "BLACKLIST_MATCH" for s in risk.signals) or risk.url_high:
-        verdict = Verdict.LIKELY_FAKE
+        if fraud_positive:
+            verdict, rule = Verdict.LIKELY_FAKE, DecisionRule.CLAIM_WITH_FRAUD_SIGNALS
+            outcome = "claim_plus_fraud_positive"
+        else:
+            verdict, rule = Verdict.OFFICIAL_CLAIM_UNVERIFIED, DecisionRule.CLAIM_WITHOUT_MATCH
+            outcome = "claim_without_match"
+    elif fraud_positive:
+        verdict, rule = Verdict.LIKELY_FAKE, DecisionRule.FRAUD_SIGNALS_NO_CLAIM
         outcome = "no_claim_fraud_positive"
     else:
-        verdict = Verdict.INFORMATIONAL
+        verdict, rule = Verdict.INFORMATIONAL, DecisionRule.NO_CLAIM
         reasons.append(ReasonCode.NO_OFFICIAL_CLAIM)
         outcome = "no_official_claim"
     trace.append(TraceStep(stage="claims_risk", outcome=outcome,
@@ -337,6 +386,8 @@ def decide(inp: DecisionInput) -> Decision:
     _guard(verdict, reasons)
     return Decision(
         verdict=verdict,
+        rule=rule,
+        escalating_reasons=escalating,
         reasons=reasons,
         claimed_entity_id=claims.claimed_entity_id,
         campaign=campaign,

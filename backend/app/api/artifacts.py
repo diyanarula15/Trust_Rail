@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db
 from app.models import Artifact, CommStatus, Communication
-from app.schemas import err
+from app.schemas import err, ok
 
 router = APIRouter(prefix="/api/artifacts", tags=["artifacts"])
 
@@ -34,6 +34,36 @@ def _not_found() -> JSONResponse:
     # a caller poking at hashes shouldn't be able to tell drafts apart from
     # things that don't exist.
     return JSONResponse(status_code=404, content=err("not_found", "No preview for that artifact."))
+
+
+@router.get("/samples")
+def list_sample_artifacts(limit: int = 3, db: Session = Depends(get_db)) -> dict:
+    """Published images the UI can offer as one-click examples.
+
+    Returned by content hash rather than hardcoded in the frontend so the
+    samples always track whatever the current seed actually published — a
+    pinned hash would silently 404 after every reseed.
+    """
+    rows = db.execute(
+        select(Communication, Artifact)
+        .join(Artifact, Communication.artifact_id == Artifact.id)
+        .where(
+            Communication.status == CommStatus.published,
+            Artifact.mime.in_(_PREVIEWABLE_MIMES),
+        )
+        .order_by(Communication.published_at)
+        .limit(min(limit, 10))
+    ).all()
+    return ok(
+        [
+            {
+                "sha256": artifact.sha256,
+                "title": comm.title,
+                "channel": comm.channel.value,
+            }
+            for comm, artifact in rows
+        ]
+    )
 
 
 @router.get("/{sha256}/preview")
