@@ -108,6 +108,16 @@ def ingest_text(text: str) -> IngestResult:
     return IngestResult(kind=InputKind.text, text=text)
 
 
+def ingest_eml_bytes(raw: bytes) -> IngestResult:
+    """Raw .eml bytes straight from an IMAP fetch — bypasses the filename-
+    sniffing path in ingest_file, which has nothing to sniff from a mailbox
+    fetch (there's no upload filename to fall back on)."""
+    settings = get_settings()
+    if len(raw) > settings.max_eml_bytes:
+        raise IngestError("too_large", f"eml exceeds the {settings.max_eml_bytes // (1024 * 1024)} MB limit.")
+    return IngestResult(kind=InputKind.eml, data=raw, mime="message/rfc822")
+
+
 def ingest_url(url: str) -> IngestResult:
     url = url.strip()
     if not url or len(url) > 2048:

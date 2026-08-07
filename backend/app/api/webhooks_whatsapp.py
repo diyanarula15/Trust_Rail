@@ -43,14 +43,20 @@ def verify_subscription(request: Request):
     return JSONResponse(status_code=403, content=err("forbidden", "Verification token mismatch."))
 
 
-def _extract(message: dict) -> tuple[str, str | None, str | None]:
-    """(kind, text, media_id) for the message shapes we accept."""
+def _extract(message: dict) -> tuple[str, str | None, str | None, str | None]:
+    """(kind, text, media_id, sim_local_path) for the message shapes we accept.
+
+    sim_local_path is a testing-only key scripts/whatsapp_sim.py adds so a
+    real attachment can be exercised without a Meta Business account (see
+    channels/whatsapp.download_media) — a real Meta payload never carries it.
+    """
     kind = message.get("type", "")
     if kind == "text":
-        return "text", (message.get("text") or {}).get("body"), None
+        return "text", (message.get("text") or {}).get("body"), None, None
     if kind in ("image", "video", "document"):
-        return kind, (message.get(kind) or {}).get("caption"), (message.get(kind) or {}).get("id")
-    return kind, None, None
+        node = message.get(kind) or {}
+        return kind, node.get("caption"), node.get("id"), message.get("_sim_local_path")
+    return kind, None, None, None
 
 
 @router.post("")
@@ -75,11 +81,11 @@ async def receive(request: Request):
         for change in entry.get("changes", []):
             for message in (change.get("value") or {}).get("messages", []):
                 sender = message.get("from")
-                kind, text, media_id = _extract(message)
+                kind, text, media_id, sim_local_path = _extract(message)
                 if not sender:
                     continue
                 try:
-                    _handle_one(sender, kind, text, media_id)
+                    _handle_one(sender, kind, text, media_id, sim_local_path)
                     handled += 1
                 except Exception:
                     # 200 regardless — see module docstring on retry storms
@@ -87,12 +93,14 @@ async def receive(request: Request):
     return ok({"handled": handled})
 
 
-def _handle_one(sender: str, kind: str, text: str | None, media_id: str | None) -> None:
+def _handle_one(
+    sender: str, kind: str, text: str | None, media_id: str | None, sim_local_path: str | None = None
+) -> None:
     """One inbound message → one verdict reply, via the shared pipeline."""
     from app.api.verify import _run_verification  # local import avoids a cycle
 
     if media_id:
-        media = whatsapp.download_media(media_id)
+        media = whatsapp.download_media(media_id, sim_local_path)
         if media is None:
             whatsapp.send_text(sender, "Sorry — that attachment could not be downloaded.")
             return

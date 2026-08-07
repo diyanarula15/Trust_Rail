@@ -12,7 +12,7 @@ from app.api.registry import router as registry_router
 from app.api.telemetry import router as telemetry_router
 from app.api.tokens import router as tokens_router
 from app.api.verify import router as verify_router
-from app.api.webhooks_whatsapp import router as whatsapp_router
+from app.api.webhooks_whatsapp import router as webhooks_whatsapp_router
 from app.config import get_settings
 from app.db import engine
 
@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(telemetry_router)
     app.include_router(artifacts_router)
     app.include_router(ingest_router)
-    app.include_router(whatsapp_router)
+    app.include_router(webhooks_whatsapp_router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:

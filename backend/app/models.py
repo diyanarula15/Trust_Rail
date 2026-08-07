@@ -77,6 +77,8 @@ class CommStatus(str, enum.Enum):
 class VerifyChannel(str, enum.Enum):
     sim = "sim"
     whatsapp = "whatsapp"
+    telegram = "telegram"
+    email = "email"
 
 
 class InputKind(str, enum.Enum):

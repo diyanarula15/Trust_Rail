@@ -82,7 +82,7 @@ def send_text(to: str, text: str) -> bool:
     """Reply to a user. Returns False rather than raising — a failed send
     must never take down the verification that produced it."""
     if not enabled():
-        logger.info("whatsapp disabled; would have sent %d chars to %s", len(text), to)
+        logger.info("whatsapp disabled; reply for %s:\n%s", to, text)
         return False
     s = get_settings()
     try:
@@ -104,8 +104,17 @@ def send_text(to: str, text: str) -> bool:
         return False
 
 
-def download_media(media_id: str) -> tuple[bytes, str] | None:
-    """Fetch an inbound attachment. Two hops: metadata, then the binary."""
+def download_media(media_id: str, sim_local_path: str | None = None) -> tuple[bytes, str] | None:
+    """Fetch an inbound attachment. Two hops: metadata, then the binary.
+
+    `sim_local_path` is a testing-only escape hatch (see scripts/whatsapp_sim.py
+    and docs/SETUP_WHATSAPP.md): with no Meta Business account, there is no
+    real media_id to resolve, so the simulator hands us the bytes to use
+    directly instead. A real Meta payload never carries this.
+    """
+    if sim_local_path:
+        with open(sim_local_path, "rb") as f:
+            return f.read(), "application/octet-stream"
     if not enabled():
         return None
     s = get_settings()

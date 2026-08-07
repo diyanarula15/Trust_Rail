@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str = ""
     whatsapp_app_secret: str = ""
 
+    channel_telegram_enabled: bool = False
+    telegram_bot_token: str = ""
+
+    channel_email_enabled: bool = False
+    email_imap_host: str = ""
+    email_imap_port: int = 993
+    email_smtp_host: str = ""
+    email_smtp_port: int = 587
+    email_username: str = ""
+    email_password: str = ""
+    email_poll_interval_seconds: int = 30
+
     # Matching thresholds (spec §8.3)
     phash_match_max_dist: int = 10
     phash_near_max_dist: int = 16
