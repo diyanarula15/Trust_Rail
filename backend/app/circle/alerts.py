@@ -9,6 +9,7 @@ Only senders who opt into a circle get this extra, separate `CircleAlert`
 log, and only via the transient `sender_external_id` passed in per call.
 """
 import logging
+import uuid
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,6 +28,7 @@ _CHANNEL_MAP = {
     VerifyChannel.whatsapp: CircleChannel.whatsapp,
     VerifyChannel.telegram: CircleChannel.telegram,
     VerifyChannel.email: CircleChannel.email,
+    VerifyChannel.sms: CircleChannel.sms,
 }
 
 
@@ -81,6 +83,26 @@ def _deliver(circle: TrustCircle, text: str) -> str:
     return "none"
 
 
+def _dispatch_and_log(db: Session, circle: TrustCircle, decision: Decision, card: dict) -> str:
+    """One circle, one alert: deliver it, log it (even on failed delivery —
+    an undeliverable alert is still a real event worth the guardian seeing
+    in their history), return what actually happened."""
+    text = _alert_text(card)
+    try:
+        delivered_via = _deliver(circle, text)
+    except Exception:
+        logger.exception("circle alert dispatch failed for circle %s", circle.id)
+        delivered_via = "none"
+    db.add(CircleAlert(
+        circle_id=circle.id,
+        verdict=decision.verdict.value,
+        plain_headline=(card.get("plain_headline") or card.get("headline") or "")[:300],
+        campaign=decision.campaign,
+        delivered_via=delivered_via,
+    ))
+    return delivered_via
+
+
 def maybe_alert_guardians(
     db: Session,
     *,
@@ -88,40 +110,56 @@ def maybe_alert_guardians(
     sender_external_id: str | None,
     decision: Decision,
     card: dict,
+    also_alert_circle_id: uuid.UUID | None = None,
 ) -> bool:
     """Returns whether at least one alert was actually dispatched, so the
     calling channel adapter can append a "your family member has been
-    notified" line to its already-formatted reply."""
-    if not get_settings().trust_circle_enabled:
-        return False
-    if sender_external_id is None or decision.verdict not in ALERT_VERDICTS:
-        return False
-    circle_channel = _CHANNEL_MAP.get(channel)
-    if circle_channel is None:
+    notified" line to its already-formatted reply.
+
+    Two independent dispatch paths, both gated on the same verdict check:
+
+    - identity lookup: `sender_external_id` is who sent this (a chat_id, an
+      email, a phone number that texted the bot directly) — every circle
+      whose *elder* matches that identity gets alerted. This is what every
+      channel adapter uses.
+    - direct (`also_alert_circle_id`): the caller already knows exactly
+      which circle this concerns and there is no sender identity to look up
+      against — this is Auto-Guard's case (see channels/sms.py's
+      handle_guard_inbound): the forwarded message's sender is whoever
+      texted the elder, not the elder, so identity lookup is meaningless
+      here and would silently alert nobody.
+
+    Both can fire on the same call without double-alerting anyone, since
+    they necessarily target disjoint circles in practice.
+    """
+    if not get_settings().trust_circle_enabled or decision.verdict not in ALERT_VERDICTS:
         return False
 
-    external_id = sender_external_id.strip()
-    if circle_channel == CircleChannel.email:
-        external_id = external_id.lower()
-    circles = _lookup_circles(db, circle_channel, external_id)
-    if not circles:
-        return False
+    attempted = False   # any circle found and logged, delivered or not
+    dispatched = False  # at least one delivery actually succeeded
 
-    text = _alert_text(card)
-    dispatched = False
-    for circle in circles:
-        try:
-            delivered_via = _deliver(circle, text)
-        except Exception:
-            logger.exception("circle alert dispatch failed for circle %s", circle.id)
-            delivered_via = "none"
-        db.add(CircleAlert(
-            circle_id=circle.id,
-            verdict=decision.verdict.value,
-            plain_headline=(card.get("plain_headline") or card.get("headline") or "")[:300],
-            campaign=decision.campaign,
-            delivered_via=delivered_via,
-        ))
-        dispatched = dispatched or delivered_via != "none"
-    db.commit()
+    if sender_external_id is not None:
+        circle_channel = _CHANNEL_MAP.get(channel)
+        if circle_channel is not None:
+            external_id = sender_external_id.strip()
+            if circle_channel == CircleChannel.email:
+                external_id = external_id.lower()
+            for circle in _lookup_circles(db, circle_channel, external_id):
+                attempted = True
+                if _dispatch_and_log(db, circle, decision, card) != "none":
+                    dispatched = True
+
+    if also_alert_circle_id is not None:
+        circle = db.get(TrustCircle, also_alert_circle_id)
+        if circle is not None and circle.status == CircleStatus.active:
+            attempted = True
+            if _dispatch_and_log(db, circle, decision, card) != "none":
+                dispatched = True
+
+    # Commit whenever a circle was actually processed, not only on a
+    # successful delivery — an undeliverable alert (guardian has neither a
+    # linked channel nor an email, say) is still a real CircleAlert row the
+    # guardian dashboard's history should show, not a silently dropped write.
+    if attempted:
+        db.commit()
     return dispatched

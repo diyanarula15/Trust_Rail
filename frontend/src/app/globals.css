@@ -25,6 +25,77 @@ body {
 }
 
 /* ---------------------------------------------------------------------
+   Marketing surfaces.
+
+   Same reasoning as the animation block below: written as plain CSS so they
+   cannot silently fail to generate. Gradients stay inside the existing
+   palette — a regulator-facing tool borrowing a consumer-app pastel scheme
+   would read as less credible, not more, so the reference site's *structure*
+   and spacing are adopted while the colours stay serious.
+   --------------------------------------------------------------------- */
+
+/* Soft tinted field behind the hero and closing CTA. */
+.tr-hero {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgb(var(--seal) / 0.13), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 85% 10%, rgb(var(--verified) / 0.08), transparent 65%),
+    linear-gradient(180deg, rgb(var(--card)) 0%, rgb(var(--paper)) 100%);
+}
+
+/* Alternate section tint, so blocks read as distinct bands. */
+.tr-band {
+  background: linear-gradient(180deg, rgb(var(--card)) 0%, rgb(var(--card) / 0.4) 100%);
+}
+
+/* Card that lifts slightly on hover — used for the feature mockups. */
+.tr-lift {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+}
+.tr-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -12px rgb(var(--ink) / 0.18);
+}
+
+/* Buttons: solid, generous, rounded — the reference site's most legible
+   single trait. Kept as component classes so every page gets the same
+   target size rather than each one re-deriving padding. */
+.tr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.8125rem 1.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.tr-btn:active { transform: translateY(1px); }
+
+.tr-btn-primary {
+  background-color: rgb(var(--ink));
+  color: rgb(var(--paper));
+}
+.tr-btn-primary:hover { opacity: 0.88; }
+
+.tr-btn-secondary {
+  background-color: rgb(var(--card));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--hairline));
+}
+.tr-btn-secondary:hover { background-color: rgb(var(--paper)); }
+
+/* Eyebrow label above section headings. */
+.tr-eyebrow {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(var(--seal));
+}
+
+/* ---------------------------------------------------------------------
    Animation utilities.
 
    Written as plain CSS rather than Tailwind theme extensions on purpose:

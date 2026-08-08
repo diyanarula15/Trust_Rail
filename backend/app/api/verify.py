@@ -361,6 +361,7 @@ def _run_verification(
     channel: VerifyChannel,
     locale: str,
     sender_external_id: str | None = None,
+    also_alert_circle_id: uuid.UUID | None = None,
 ) -> Iterator[tuple[str, dict]]:
     """The pipeline, as a sequence of observable stages.
 
@@ -537,7 +538,7 @@ def _run_verification(
     # `verification` above — see app/circle/alerts.py's module docstring.
     if maybe_alert_guardians(
         db, channel=channel, sender_external_id=sender_external_id,
-        decision=decision, card=card,
+        decision=decision, card=card, also_alert_circle_id=also_alert_circle_id,
     ):
         card["circle_alert_sent"] = True
 

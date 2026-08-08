@@ -79,6 +79,7 @@ class VerifyChannel(str, enum.Enum):
     whatsapp = "whatsapp"
     telegram = "telegram"
     email = "email"
+    sms = "sms"
 
 
 class InputKind(str, enum.Enum):
@@ -108,6 +109,7 @@ class CircleChannel(str, enum.Enum):
     whatsapp = "whatsapp"
     telegram = "telegram"
     email = "email"
+    sms = "sms"
 
 
 class CircleStatus(str, enum.Enum):
@@ -313,6 +315,22 @@ class TrustCircle(TimestampedBase):
     guardian_channel_external_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     circle_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+
+    # Auto-Guard: a SECOND, independent bearer token — deliberately not reused
+    # from elder_channel/elder_external_id above. Those identify "how the
+    # elder proved who they are when they set this circle up" (a chat_id, an
+    # email address) and every existing channel adapter matches incoming
+    # traffic against that identity. Auto-Guard is a different shape of
+    # input entirely: a phone's SMS-forwarder app (or a Twilio number) posts
+    # every message it sees to a URL, and the ORIGINAL SENDER in that
+    # payload is whoever texted the elder — a scammer, most of the time —
+    # never the elder themselves. There is no elder identity in that payload
+    # to match against. So the elder's identity here is the URL itself:
+    # possession of `guard_token` in the webhook path IS the proof this
+    # traffic belongs to this elder's phone, the same bearer-capability
+    # idiom `circle_token`/`pairing_code` already use elsewhere in this file.
+    guard_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+
     status: Mapped[CircleStatus] = mapped_column(
         Enum(CircleStatus, name="circle_status"), default=CircleStatus.pending
     )

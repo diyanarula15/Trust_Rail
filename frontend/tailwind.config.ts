@@ -22,8 +22,17 @@ const config: Config = {
         body: ["var(--font-inter)", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
       },
+      // Softer than the original 6px. The reference site's rounding is one of
+      // the clearest reasons it reads as a finished product rather than an
+      // internal tool; `rounded` is used almost everywhere already, so
+      // changing the default lifts every page at once.
       borderRadius: {
-        DEFAULT: "6px",
+        DEFAULT: "10px",
+        lg: "14px",
+        xl: "20px",
+      },
+      maxWidth: {
+        prose: "68ch",
       },
     },
   },

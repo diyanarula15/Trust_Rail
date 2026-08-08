@@ -1,294 +1,426 @@
 import {
-  Activity,
-  ShieldCheck,
-  ShieldAlert,
   AlertTriangle,
-  Info,
-  FileSignature,
-  Map as MapIcon,
-  ScrollText,
-  BookMarked,
   ArrowRight,
-  Upload,
-  ScanSearch,
+  Building2,
+  HeartHandshake,
+  Info,
+  Landmark,
+  Lock,
   MessageSquareText,
+  ScanSearch,
+  ShieldAlert,
+  ShieldCheck,
+  Smartphone,
+  Upload,
 } from "lucide-react";
 import { getTelemetrySummary } from "@/lib/api";
+import {
+  MockAutoGuard,
+  MockFingerprint,
+  MockIntake,
+  MockLiveCheck,
+  MockRecord,
+  MockScam,
+  MockVerdict,
+} from "@/components/marketing/Mockups";
 
-// Landing page, written for someone who has never heard of a hash: what it
-// does, how it works in three steps, what each of the five answers means,
-// and what every part of the system is for.
+// Marketing site, structured the way a product site is: a centred hero, then
+// alternating feature bands each pairing one claim with a real screen of the
+// product, then trust, then a closing call to action.
+//
+// Two things the reference layout does that are deliberately NOT copied:
+// testimonials and award badges. There are no users to quote and no awards to
+// show, and inventing either on a fraud-prevention prototype would be
+// self-defeating. The social-proof slot is filled with measured evaluation
+// numbers instead, which are real and stronger.
 
-const STEPS = [
+const FEATURES = [
   {
+    eyebrow: "For investors",
+    title: "Forward it. Get a straight answer.",
+    body:
+      "Drop in a screenshot, a PDF, an SMS, a video or a link. In under a second you are told whether a registered company actually published it — in plain words, with the reason spelled out and the working available if you want it.",
+    points: [
+      "Works on anything that lands in a chat",
+      "Answers in plain language, not jargon",
+      "English and Hindi",
+    ],
+    href: "/verify",
+    cta: "Check a message",
+    Mock: MockVerdict,
     Icon: Upload,
-    title: "You forward it",
-    body: "A screenshot, a PDF, a video, an SMS, an email, or just a link. Whatever landed in your chat.",
   },
   {
+    eyebrow: "The hard part",
+    title: "It still recognises a forward after the platform mangles it.",
+    body:
+      "Chat apps re-save every photo they carry. That rewrites the file completely — a byte-for-byte check would miss it every time. TrustRail compares what the picture looks like and what the message says, so a forwarded copy still matches.",
+    points: [
+      "Survives re-compression, resizing and screenshots",
+      "Ignores emoji and invisible characters injected into text",
+      "Catches a filing whose figures were altered",
+    ],
+    href: "/verify",
+    cta: "See the comparison",
+    Mock: MockFingerprint,
     Icon: ScanSearch,
-    title: "We check it against the real record",
-    body: "Companies and exchanges publish their announcements into a tamper-proof public record. We compare what you sent against all of it, and we can still recognise a picture even after WhatsApp has re-saved it.",
+    flip: true,
   },
   {
+    eyebrow: "Nothing hidden",
+    title: "Every answer shows its working.",
+    body:
+      "Each verdict names the rule that produced it and the signals that escalated it. Strictness is only defensible if you can read it back, so the reasoning sits on the card rather than behind a support ticket.",
+    points: [
+      "Four stages, reported as the server finishes them",
+      "Real measured timings, never simulated progress",
+      "Every fraud signal listed individually",
+    ],
+    href: "/dashboard",
+    cta: "See how a check works",
+    Mock: MockLiveCheck,
     Icon: MessageSquareText,
-    title: "You get a straight answer",
-    body: "Genuine, or we cannot confirm it, or it looks like a scam. Always with the reason in plain words, and you can open the working if you want it.",
+  },
+  {
+    eyebrow: "The record",
+    title: "Checked against something that cannot be rewritten.",
+    body:
+      "Issuers publish into an append-only record. Alter any entry and the fingerprint covering all of them changes. Your browser re-derives that fingerprint itself rather than trusting a server that says everything is fine.",
+    points: [
+      "Every publication and withdrawal, in order",
+      "Proof verified client-side, no server trust needed",
+      "Revocations are logged events, never silent edits",
+    ],
+    href: "/log",
+    cta: "Inspect the record",
+    Mock: MockRecord,
+    Icon: Landmark,
+    flip: true,
+  },
+  {
+    eyebrow: "No new burden",
+    title: "It rides on infrastructure issuers already use.",
+    body:
+      "Corporate announcements are already filed with exchanges. Every commercial SMS header and template is already pre-registered under DLT rules. TrustRail ingests both and signs them, so nobody is asked to adopt a new process.",
+    points: [
+      "Exchange filings ingested passively",
+      "DLT-registered SMS templates become checkable",
+      "Manual maker-checker publishing for everything else",
+    ],
+    href: "/dashboard",
+    cta: "See where the record comes from",
+    Mock: MockIntake,
+    Icon: Building2,
+  },
+  {
+    eyebrow: "When it is a scam",
+    title: "Strict about fraud. Never strict about doubt.",
+    body:
+      "Any real fraud signal — an imitation web address, a look-alike company name, a demand for payment, a known campaign — is enough to call something a scam. But failing to find a match never is: that only ever means we cannot confirm it.",
+    points: [
+      "One fraud signal is enough to escalate",
+      "An unknown issuer is never called a fraudster",
+      "Campaigns are clustered and tracked",
+    ],
+    href: "/supervision",
+    cta: "Open the supervision view",
+    Mock: MockScam,
+    Icon: AlertTriangle,
+    flip: true,
   },
 ];
 
 const VERDICTS = [
-  {
-    Icon: ShieldCheck,
-    color: "text-verified",
-    border: "border-verified",
-    title: "Yes, this is genuine",
-    body: "It matches something the company really published.",
-  },
-  {
-    Icon: ShieldAlert,
-    color: "text-notice",
-    border: "border-notice",
-    title: "Genuine, but check first",
-    body: "It was real when published, but the signing key was later reported stolen.",
-  },
-  {
-    Icon: AlertTriangle,
-    color: "text-notice",
-    border: "border-notice",
-    title: "We cannot confirm this",
-    body: "It claims to be official, but nothing published matches it.",
-  },
-  {
-    Icon: AlertTriangle,
-    color: "text-fake",
-    border: "border-fake",
-    title: "This looks like a scam",
-    body: "A fake web address, a known scam campaign, or a demand for payment.",
-  },
-  {
-    Icon: Info,
-    color: "text-info",
-    border: "border-info",
-    title: "Nothing official here",
-    body: "It does not claim to be official at all. Most forwards land here.",
-  },
+  { Icon: ShieldCheck, tone: "text-verified", title: "Yes, this is genuine",
+    body: "Matches something the company really published." },
+  { Icon: ShieldAlert, tone: "text-notice", title: "Genuine, but check first",
+    body: "Real when published, but the signing key was later reported stolen." },
+  { Icon: AlertTriangle, tone: "text-notice", title: "We cannot confirm this",
+    body: "Claims to be official, but nothing published matches. Not an accusation." },
+  { Icon: AlertTriangle, tone: "text-fake", title: "This looks like a scam",
+    body: "Carries fraud signals we treat as serious." },
+  { Icon: Info, tone: "text-info", title: "Nothing official here",
+    body: "Makes no official claim at all. Most forwards land here." },
 ];
 
-const FEATURES = [
-  {
-    href: "/dashboard",
-    Icon: Activity,
-    accent: "border-seal",
-    iconColor: "text-seal",
-    title: "Dashboard",
-    body: "The whole system at a glance: how many messages have been checked and what the answers were, the four steps every check runs through, which scam campaigns are live, and the state of the tamper-proof record.",
-    cta: "Open the dashboard",
-  },
-  {
-    href: "/verify",
-    Icon: ShieldCheck,
-    accent: "border-verified",
-    iconColor: "text-verified",
-    title: "Verify",
-    body: "Forward anything suspicious and watch it being checked, step by step. Open “How this was checked” to see the two files side by side and exactly why they did or did not match.",
-    cta: "Check something",
-  },
-  {
-    href: "/issuer",
-    Icon: FileSignature,
-    accent: "border-seal",
-    iconColor: "text-seal",
-    title: "Issuer console",
-    body: "How a company publishes in the first place. One person drafts and signs, a second approves, and only then does it enter the public record. Watch the record’s fingerprint change the moment it does.",
-    cta: "See the publishing flow",
-  },
-  {
-    href: "/log",
-    Icon: ScrollText,
-    accent: "border-ink",
-    iconColor: "text-ink",
-    title: "Public record",
-    body: "Every publication and every withdrawal, in order, and impossible to rewrite after the fact. Your browser checks the proof itself rather than taking our word for it.",
-    cta: "Inspect the record",
-  },
-  {
-    href: "/registry",
-    Icon: BookMarked,
-    accent: "border-info",
-    iconColor: "text-info",
-    title: "Who is registered",
-    body: "The companies, exchanges, brokers and funds we recognise, their official web addresses and SMS sender IDs, and the status of every signing key they hold.",
-    cta: "Browse registered entities",
-  },
-  {
-    href: "/supervision",
-    Icon: MapIcon,
-    accent: "border-fake",
-    iconColor: "text-fake",
-    title: "Supervision view",
-    body: "For the regulator: where impersonation attempts are landing across the country, which brands are being faked most, and which scam campaigns are running right now.",
-    cta: "Open the map",
-  },
-];
+// The hero counters are live figures. Without this Next prerenders this page
+// at build time and bakes in whatever the API returned then — which, when the
+// backend isn't running during the build, is zero. Rendered per request
+// instead, and it degrades to zeros rather than failing if the API is down.
+export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
   const summary = await getTelemetrySummary().catch(() => null);
   const totals = summary?.data?.totals_by_verdict ?? {};
-  const totalVerifications = Object.values(totals).reduce((a, b) => a + b, 0);
+  const checks = Object.values(totals).reduce((a, b) => a + b, 0);
   const flagged = (totals["LIKELY_FAKE"] ?? 0) + (totals["OFFICIAL_CLAIM_UNVERIFIED"] ?? 0);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-14 sm:py-20">
-      {/* Hero */}
-      <section className="grid gap-10 lg:grid-cols-[1.35fr_1fr] lg:items-center">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-info">
-            <span className="h-1.5 w-1.5 rounded-full bg-verified" />
+    <div className="-mt-px">
+      {/* ---------------- Hero ---------------- */}
+      <section className="tr-hero border-b border-hairline">
+        <div className="mx-auto max-w-4xl px-6 py-20 text-center sm:py-28">
+          <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-info">
+            <span className="tr-breathe h-1.5 w-1.5 rounded-full bg-verified" />
             SEBI TechSprint 2026 · prototype
           </div>
-          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.03] tracking-tight text-ink sm:text-6xl">
-            Forward it.
-            <br />
-            <span className="text-seal">We&rsquo;ll tell you</span> if the market
-            actually said it.
+
+          <h1 className="mt-7 font-display text-[2.6rem] font-bold leading-[1.04] tracking-tight text-ink sm:text-6xl">
+            Forward it. We&rsquo;ll tell you if
+            <br className="hidden sm:block" />{" "}
+            <span className="text-seal">the market actually said it.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-info">
-            Fake announcements, doctored filings and &ldquo;guaranteed
-            return&rdquo; schemes spread through WhatsApp faster than any
-            regulator can chase them. TrustRail answers one question, in
-            seconds:{" "}
-            <span className="font-medium text-ink">
-              did a registered company really put this out?
-            </span>
+
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-info">
+            Fake announcements, doctored filings and guaranteed-return schemes spread through
+            chat faster than any regulator can chase them. TrustRail answers one question with
+            a definite answer:{" "}
+            <span className="font-medium text-ink">did a registered company really publish this?</span>
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a
-              href="/verify"
-              className="inline-flex items-center gap-2 rounded bg-ink px-6 py-3 text-sm font-semibold text-paper hover:opacity-90"
-            >
+
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <a href="/verify" className="tr-btn tr-btn-primary">
               Check a message <ArrowRight className="h-4 w-4" />
             </a>
-            <a
-              href="/dashboard"
-              className="rounded border border-hairline bg-card px-6 py-3 text-sm font-semibold text-ink hover:bg-paper"
-            >
+            <a href="/dashboard" className="tr-btn tr-btn-secondary">
               See it working
             </a>
           </div>
-        </div>
 
-        {/* Live counters, given real weight rather than a footnote */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          <div className="rounded border border-l-4 border-hairline border-l-ink bg-card px-5 py-4">
-            <div className="font-mono text-4xl font-medium text-ink">{totalVerifications}</div>
-            <div className="mt-1 text-sm text-info">checks in the last 14 days</div>
-          </div>
-          <div className="rounded border border-l-4 border-hairline border-l-fake bg-card px-5 py-4">
-            <div className="font-mono text-4xl font-medium text-fake">{flagged}</div>
-            <div className="mt-1 text-sm text-info">flagged as unconfirmed or fake</div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="mt-20 border-t border-hairline pt-12">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          How it works
-        </h2>
-        <div className="mt-6 grid gap-5 md:grid-cols-3">
-          {STEPS.map(({ Icon, title, body }, i) => (
-            <div key={title} className="rounded border border-hairline bg-card p-5">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-paper">
-                  <Icon className="h-5 w-5 text-seal" aria-hidden />
-                </span>
-                <span className="font-mono text-xs text-info">Step {i + 1}</span>
+          <div className="mt-14 grid gap-3 sm:grid-cols-3">
+            {[
+              { v: checks, l: "messages checked", t: "text-ink" },
+              { v: flagged, l: "flagged as unconfirmed or fake", t: "text-fake" },
+              { v: "1.000", l: "matching precision, measured", t: "text-verified" },
+            ].map((s, i) => (
+              <div
+                key={s.l}
+                className="tr-rise rounded-xl border border-hairline bg-card px-5 py-5 shadow-sm"
+                style={{ ["--tr-delay" as string]: `${i * 90}ms` }}
+              >
+                <div className={`font-mono text-3xl font-medium ${s.t}`}>{s.v}</div>
+                <div className="mt-1 text-sm text-info">{s.l}</div>
               </div>
-              <h3 className="mt-3 font-display font-semibold text-ink">{title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-info">{body}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-5 max-w-3xl rounded border-l-2 border-seal bg-card px-4 py-3 text-sm leading-relaxed text-info">
-          <span className="font-medium text-ink">
-            Why forwarding doesn&rsquo;t break it.
-          </span>{" "}
-          When you forward a photo, apps re-save it to save space. That rewrites
-          the file completely, so an ordinary file check would say &ldquo;no
-          match&rdquo;. We compare what the picture <em>looks like</em> instead,
-          which survives re-saving, cropping and screenshotting. You can see
-          both comparisons on any result.
-        </p>
-      </section>
-
-      {/* The five answers */}
-      <section className="mt-20 border-t border-hairline pt-12">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          The five answers you can get
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-info">
-          TrustRail never says &ldquo;verified&rdquo; unless it can actually
-          prove it, with a signature or a match against the published record.
-          When it cannot prove something, it says so plainly instead of
-          guessing.
-        </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {VERDICTS.map(({ Icon, color, border, title, body }) => (
-            <div
-              key={title}
-              className={`rounded border border-l-4 border-hairline ${border} bg-card p-4`}
-            >
-              <Icon className={`h-5 w-5 ${color}`} aria-hidden />
-              <h3 className="mt-2 font-display text-sm font-semibold text-ink">
-                {title}
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-info">{body}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="mt-20 border-t border-hairline pt-12">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-          What&rsquo;s in here
-        </h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {FEATURES.map(({ href, Icon, accent, iconColor, title, body, cta }) => (
-            <a
-              key={href}
-              href={href}
-              className={`group rounded border border-l-4 border-hairline ${accent} bg-card p-5 transition-colors hover:bg-paper`}
-            >
-              <Icon className={`h-6 w-6 ${iconColor}`} aria-hidden />
-              <h3 className="mt-3 font-display text-lg font-semibold text-ink">
+      {/* ---------------- The thesis ---------------- */}
+      <section className="border-b border-hairline">
+        <div className="mx-auto max-w-4xl px-6 py-16 text-center sm:py-20">
+          <div className="tr-eyebrow">The idea</div>
+          <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Detection guesses. Provenance proves.
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-info">
+            Most tools look at a message and estimate how suspicious it seems. That is a guess,
+            and guesses cannot be audited. TrustRail asks something answerable instead — whether
+            the thing in front of you matches what a registered company actually published — and
+            refuses to say &ldquo;genuine&rdquo; without either a valid signature or a match
+            against that record.
+          </p>
+        </div>
+      </section>
+
+      {/* ---------------- Alternating feature bands ---------------- */}
+      {FEATURES.map(({ eyebrow, title, body, points, href, cta, Mock, Icon, flip }, i) => (
+        <section
+          key={title}
+          className={`border-b border-hairline ${i % 2 === 1 ? "tr-band" : ""}`}
+        >
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16">
+            <div className={flip ? "lg:order-2" : ""}>
+              <div className="flex items-center gap-2">
+                <Icon className="h-4 w-4 text-seal" aria-hidden />
+                <span className="tr-eyebrow">{eyebrow}</span>
+              </div>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.12] tracking-tight text-ink sm:text-[2.35rem]">
                 {title}
+              </h2>
+              <p className="mt-4 max-w-prose text-[17px] leading-relaxed text-info">{body}</p>
+              <ul className="mt-6 space-y-2.5">
+                {points.map((p) => (
+                  <li key={p} className="flex items-start gap-2.5 text-[15px] text-ink">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-verified" aria-hidden />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={href}
+                className="mt-7 inline-flex items-center gap-1.5 text-[15px] font-semibold text-ink underline decoration-hairline decoration-2 underline-offset-4 hover:decoration-seal"
+              >
+                {cta} <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+
+            <div className={flip ? "lg:order-1" : ""}>
+              <Mock />
+            </div>
+          </div>
+        </section>
+      ))}
+
+      {/* ---------------- Trust Circle: its own section, deliberately not
+          just another item in the alternating list above. Two real, distinct
+          capabilities: reactive (forward a suspicious message and get an
+          answer) and Auto-Guard (nobody has to do anything at all). ---- */}
+      <section className="tr-hero border-b border-hairline">
+        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="flex items-center justify-center gap-2">
+              <HeartHandshake className="h-4 w-4 text-seal" aria-hidden />
+              <span className="tr-eyebrow">Family protection</span>
+            </div>
+            <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+              Trust Circle
+            </h2>
+            <p className="mt-4 text-[17px] leading-relaxed text-info">
+              The person most likely to lose money to a fake IPO or a fake KYC-update text is
+              often the person least likely to check it first. Trust Circle links their phone
+              to yours, so a scam gets caught even when they never think to ask.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-4 w-4 text-seal" aria-hidden />
+                <span className="tr-eyebrow">The important part</span>
+              </div>
+              <h3 className="mt-3 font-display text-2xl font-bold leading-[1.12] tracking-tight text-ink">
+                Auto-Guard scans every message that arrives &mdash; before anyone clicks
               </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-info">{body}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-ink">
-                {cta}
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-              </span>
+              <p className="mt-4 max-w-prose text-[17px] leading-relaxed text-info">
+                Once it&rsquo;s turned on, nothing is manually forwarded to a bot and nothing
+                is left to notice. Every text that reaches their phone is checked the instant
+                it arrives, using the identical pipeline every other page on this site uses.
+                If one turns out to be dangerous, you&rsquo;re alerted here &mdash; and they
+                are never left to make that call alone.
+              </p>
+              <ul className="mt-6 space-y-2.5">
+                {[
+                  "Works via a free SMS-forwarder app already on the Play Store, or a dedicated number",
+                  "No action from them, ever — the scanning is invisible",
+                  "Ordinary messages never generate an alert; only real fraud signals do",
+                ].map((p) => (
+                  <li key={p} className="flex items-start gap-2.5 text-[15px] text-ink">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-verified" aria-hidden />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="/trust-circle"
+                className="mt-7 inline-flex items-center gap-1.5 text-[15px] font-semibold text-ink underline decoration-hairline decoration-2 underline-offset-4 hover:decoration-seal"
+              >
+                Set up Trust Circle <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+            <MockAutoGuard />
+          </div>
+
+          <div className="mx-auto mt-12 max-w-3xl rounded-xl border border-hairline bg-card p-5 text-center">
+            <p className="text-sm leading-relaxed text-info">
+              Prefer the reactive version? They can also just forward anything suspicious
+              straight to the bot on WhatsApp, Telegram, SMS or email and get an answer back
+              in seconds &mdash; the same way anyone else uses{" "}
+              <a href="/channels" className="font-medium text-ink underline decoration-hairline decoration-2 underline-offset-2 hover:decoration-seal">
+                Channels
+              </a>
+              . Auto-Guard and the reactive bots work independently; most families use both.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- The five answers ---------------- */}
+      <section className="border-b border-hairline">
+        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="tr-eyebrow">What you get back</div>
+            <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+              Five possible answers
+            </h2>
+            <p className="mt-4 text-[17px] leading-relaxed text-info">
+              No score out of a hundred, no traffic light you have to interpret. One of these,
+              every time, with the reason attached.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {VERDICTS.map(({ Icon, tone, title, body }, i) => (
+              <div
+                key={title}
+                className="tr-rise tr-lift rounded-xl border border-hairline bg-card p-5 shadow-sm"
+                style={{ ["--tr-delay" as string]: `${i * 70}ms` }}
+              >
+                <Icon className={`h-6 w-6 ${tone}`} aria-hidden />
+                <h3 className={`mt-3 font-display text-base font-bold ${tone}`}>{title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-info">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- Trust / how it holds up ---------------- */}
+      <section className="tr-band border-b border-hairline">
+        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <Lock className="mx-auto h-6 w-6 text-seal" aria-hidden />
+            <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+              Built so you do not have to take our word for it
+            </h2>
+            <p className="mt-4 text-[17px] leading-relaxed text-info">
+              The cryptography is real, not illustrative. These numbers come from the
+              evaluation and acceptance suites in the repository, not a slide.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { v: "1.000", l: "matching precision", d: "across 81 evaluation cases" },
+              { v: "25/25", l: "acceptance cases", d: "every verdict path, expected answers" },
+              { v: "112", l: "backend tests", d: "including the no-unproven-verdict guardrail" },
+              { v: "831", l: "proof vectors", d: "verified in Python and TypeScript alike" },
+            ].map((s, i) => (
+              <div
+                key={s.l}
+                className="tr-rise rounded-xl border border-hairline bg-card p-5 shadow-sm"
+                style={{ ["--tr-delay" as string]: `${i * 70}ms` }}
+              >
+                <div className="font-mono text-2xl font-medium text-ink">{s.v}</div>
+                <div className="mt-1 text-sm font-medium text-ink">{s.l}</div>
+                <div className="mt-0.5 text-xs leading-relaxed text-info">{s.d}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-info">
+            Every entity, filing and campaign in this demo is fictional. The signatures,
+            transparency log and matching are not.
+          </p>
+        </div>
+      </section>
+
+      {/* ---------------- Closing CTA ---------------- */}
+      <section className="tr-hero">
+        <div className="mx-auto max-w-3xl px-6 py-20 text-center sm:py-24">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-[2.6rem]">
+            Try it on something suspicious.
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-info">
+            There are ready-made examples on the verify page — a real scam SMS, an ordinary news
+            line, and a photo forwarded exactly the way a chat app would mangle it.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a href="/verify" className="tr-btn tr-btn-primary">
+              Check a message <ArrowRight className="h-4 w-4" />
             </a>
-          ))}
+            <a href="/dashboard" className="tr-btn tr-btn-secondary">
+              Open the dashboard
+            </a>
+          </div>
         </div>
-      </section>
-
-      {/* Honesty note */}
-      <section className="mt-20 rounded border border-l-4 border-hairline border-l-seal bg-card p-6 sm:p-8">
-        <h2 className="font-display text-lg font-bold text-ink">
-          What this is, honestly
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-info">
-          This is a hackathon prototype, not a SEBI service. Every company,
-          registration number, filing and scam campaign you see here is
-          fictional and made up for the demo. The cryptography is real: the
-          signatures, the tamper-proof record and the proof your browser checks
-          are genuine implementations, not mock-ups. What is deliberately not
-          built is listed in the project&rsquo;s architecture notes rather than
-          glossed over.
-        </p>
       </section>
     </div>
   );

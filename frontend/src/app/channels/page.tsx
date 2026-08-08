@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { ChatSimulator, type ChatTurn, type Platform } from "@/components/ChatSimulator";
-import { simTelegram, simWhatsapp } from "@/lib/api";
+import { simSms, simTelegram, simWhatsapp } from "@/lib/api";
 
-const PLATFORMS: Platform[] = ["telegram", "whatsapp"];
+const PLATFORMS: Platform[] = ["telegram", "whatsapp", "sms"];
 
 export default function ChannelsPage() {
   const [platform, setPlatform] = useState<Platform>("telegram");
   const [history, setHistory] = useState<Record<Platform, ChatTurn[]>>({
     telegram: [],
     whatsapp: [],
+    sms: [],
   });
   const [current, setCurrent] = useState<{ sentLabel: string; sentImageUrl?: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,7 +37,7 @@ export default function ChannelsPage() {
         card: res.data?.card,
         error: res.error?.message,
       };
-    } else {
+    } else if (platform === "whatsapp") {
       const res = await simWhatsapp(input);
       turn = {
         ...turnBase,
@@ -44,6 +45,9 @@ export default function ChannelsPage() {
         card: res.data?.card,
         error: res.error?.message,
       };
+    } else {
+      const res = await simSms(input);
+      turn = { ...turnBase, replyText: res.data?.text, error: res.error?.message };
     }
 
     setHistory((h) => ({ ...h, [platform]: [...h[platform], turn] }));
@@ -61,10 +65,14 @@ export default function ChannelsPage() {
           Channels
         </h1>
         <p className="mt-2.5 max-w-2xl text-[15px] leading-relaxed text-info">
-          The same verification pipeline as Verify, run through the real Telegram and
-          WhatsApp reply formatting &mdash; this is the literal text those bots would send.
-          Nothing here is actually sent anywhere; see docs/SETUP_TELEGRAM.md and
-          docs/SETUP_WHATSAPP.md for what &ldquo;going live&rdquo; would take.
+          The same verification pipeline as Verify, run through each platform&rsquo;s real
+          reply formatting &mdash; this is the literal text a Telegram, WhatsApp or SMS bot
+          would send. Nothing here is actually sent anywhere; see docs/SETUP_TELEGRAM.md,
+          docs/SETUP_WHATSAPP.md and docs/SETUP_SMS.md for what &ldquo;going live&rdquo;
+          would take. SMS also has a second, automatic mode &mdash; see{" "}
+          <a href="/trust-circle" className="underline decoration-hairline decoration-2 underline-offset-2 hover:decoration-seal">
+            Trust Circle
+          </a>.
         </p>
 
         <div className="mt-4 inline-flex rounded-full border border-hairline bg-card p-1">

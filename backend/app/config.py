@@ -43,6 +43,17 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
 
+    # See docs/SETUP_SMS.md. Two integration paths, both real: a Twilio
+    # number (channel_sms_enabled + these three) for a bot number people
+    # text directly, and Trust Circle "Auto-Guard" (trust_circles.guard_token,
+    # always available once trust_circle_enabled — no Twilio account needed)
+    # for scanning everything arriving on someone's own phone via an SMS-
+    # forwarder app. Ships simulated (scripts/sms_sim.py) until these are set.
+    channel_sms_enabled: bool = False
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+
     channel_email_enabled: bool = False
     email_imap_host: str = ""
     email_imap_port: int = 993

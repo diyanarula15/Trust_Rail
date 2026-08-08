@@ -27,7 +27,11 @@ web:
 	cd frontend && $(PNPM) dev
 
 check:
-	cd backend && .venv/bin/pytest -q tests && .venv/bin/python -m scripts.smoke && .venv/bin/python -m scripts.smoke_epic5
+	cd backend && .venv/bin/pytest -q tests && .venv/bin/python -m scripts.smoke && .venv/bin/python -m scripts.smoke_epic5 && .venv/bin/python -m scripts.smoke_circle
+
+# Trust Circle + SMS Auto-Guard only, without the full `check` chain's reseed.
+smoke-circle:
+	cd backend && .venv/bin/python -m scripts.smoke_circle
 
 eval:
 	cd backend && .venv/bin/python -m scripts.evaluate

@@ -5,7 +5,18 @@ import { Bot, CheckCheck, ChevronDown, ChevronUp, Paperclip, Send } from "lucide
 import type { ButtonSpec, CardPayload } from "@/lib/api";
 import { VerdictCard } from "./VerdictCard";
 
-export type Platform = "telegram" | "whatsapp";
+export type Platform = "telegram" | "whatsapp" | "sms";
+
+// Real SMS in this codebase (a Twilio number, or an SMS-forwarder app —
+// see docs/SETUP_SMS.md) never carries an image/PDF/video through this
+// particular flow the way Telegram/WhatsApp media messages do, so the demo
+// doesn't offer an attach button for it — pretending otherwise would show
+// a capability that doesn't exist.
+export const PLATFORM_SUPPORTS_FILES: Record<Platform, boolean> = {
+  telegram: true,
+  whatsapp: true,
+  sms: false,
+};
 
 // One-off brand-ish colors for the platform chrome — deliberately not added
 // to the app's semantic verdict palette (globals.css's --verified/--notice/
@@ -40,6 +51,17 @@ const SKIN: Record<
     chatBg: "bg-[#ECE5DD]",
     accent: "bg-[#25D366]",
     accentText: "text-[#0b1f0f]",
+  },
+  // No brand to borrow — SMS isn't one company's app — so this reads as a
+  // plain native Messages screen rather than imitating any real product.
+  sms: {
+    name: "SMS",
+    headerBg: "bg-[#334155]",
+    outgoingBubble: "bg-[#DCEEFB] text-[#0b1f2b]",
+    incomingBubble: "bg-white text-[#0b1f2b]",
+    chatBg: "bg-[#F1F5F9]",
+    accent: "bg-[#334155]",
+    accentText: "text-white",
   },
 };
 
@@ -97,6 +119,7 @@ export function ChatSimulator({
   onSubmit: (input: { file?: File; text?: string }) => void;
 }) {
   const skin = SKIN[platform];
+  const supportsFiles = PLATFORM_SUPPORTS_FILES[platform];
   const [text, setText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [openDetail, setOpenDetail] = useState<Record<string, boolean>>({});
@@ -128,8 +151,9 @@ export function ChatSimulator({
       <div className={`flex min-h-[420px] flex-col gap-3 overflow-y-auto px-4 py-4 ${skin.chatBg}`}>
         {history.length === 0 && !current && (
           <div className="m-auto max-w-xs text-center text-sm text-info">
-            Forward a message, image, PDF or video below to see what {skin.name} would
-            actually reply.
+            {supportsFiles
+              ? `Forward a message, image, PDF or video below to see what ${skin.name} would actually reply.`
+              : `Send a text message below to see what ${skin.name} would actually reply.`}
           </div>
         )}
 
@@ -210,24 +234,28 @@ export function ChatSimulator({
       </div>
 
       <div className="flex items-center gap-2 border-t border-hairline bg-card px-3 py-2.5">
-        <input
-          ref={fileRef}
-          type="file"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) submitFile(f);
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={busy}
-          className="shrink-0 rounded-full p-2 text-info hover:bg-paper disabled:opacity-40"
-          aria-label="Attach a file"
-        >
-          <Paperclip className="h-5 w-5" aria-hidden />
-        </button>
+        {supportsFiles && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) submitFile(f);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+              className="shrink-0 rounded-full p-2 text-info hover:bg-paper disabled:opacity-40"
+              aria-label="Attach a file"
+            >
+              <Paperclip className="h-5 w-5" aria-hidden />
+            </button>
+          </>
+        )}
         <input
           type="text"
           value={text}

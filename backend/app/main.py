@@ -14,6 +14,7 @@ from app.api.sim import router as sim_router
 from app.api.telemetry import router as telemetry_router
 from app.api.tokens import router as tokens_router
 from app.api.verify import router as verify_router
+from app.api.webhooks_sms import router as webhooks_sms_router
 from app.api.webhooks_telegram import router as webhooks_telegram_router
 from app.api.webhooks_whatsapp import router as webhooks_whatsapp_router
 from app.config import get_settings
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(ingest_router)
     app.include_router(webhooks_whatsapp_router)
     app.include_router(webhooks_telegram_router)
+    app.include_router(webhooks_sms_router)
     app.include_router(sim_router)
     app.include_router(circle_router)
 

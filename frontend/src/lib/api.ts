@@ -316,6 +316,11 @@ export interface WhatsAppSimReply {
   card: CardPayload;
 }
 
+export interface SmsSimReply {
+  /** The literal SMS reply body — plain text, no markup (real SMS has none). */
+  text: string;
+}
+
 function channelSimForm(input: ChannelSimInput): FormData {
   const form = new FormData();
   if (input.file) form.append("file", input.file);
@@ -341,6 +346,16 @@ export async function simWhatsapp(
     method: "POST",
     body: channelSimForm(input),
   });
+  return res.json();
+}
+
+/** Text only — the SMS simulator endpoint has no `file` parameter at all
+ * (see api/sim.py's sim_sms docstring for why), so `input.file` is ignored
+ * here rather than silently sent and dropped server-side. */
+export async function simSms(input: ChannelSimInput): Promise<ApiResponse<SmsSimReply>> {
+  const form = new FormData();
+  if (input.text !== undefined) form.append("text", input.text);
+  const res = await fetch(`${API_BASE_URL}/api/sim/sms`, { method: "POST", body: form });
   return res.json();
 }
 
@@ -598,11 +613,17 @@ export interface CircleAlertOut {
 
 export interface CircleStatusOut {
   status: "pending" | "active" | "revoked";
-  elder_channel: "whatsapp" | "telegram" | "email";
+  elder_channel: "whatsapp" | "telegram" | "email" | "sms";
   elder_masked: string;
   guardian_name: string | null;
   guardian_email: string | null;
-  guardian_channel: "whatsapp" | "telegram" | "email" | null;
+  guardian_channel: "whatsapp" | "telegram" | "email" | "sms" | null;
+  /** Auto-Guard: automatic scanning of every message on the elder's own
+   * phone, via an SMS-forwarder app or Twilio number pointed at
+   * `guard_webhook_url`. Independent of `elder_channel` above — that's how
+   * they set the circle up; this is a separate, optional capability. */
+  guard_enabled: boolean;
+  guard_webhook_url: string | null;
   alerts: CircleAlertOut[];
 }
 
@@ -637,6 +658,54 @@ export async function revokeCircle(
     method: "POST",
   });
   return res.json();
+}
+
+export interface GuardTokenOut {
+  guard_token: string;
+  webhook_url: string;
+}
+
+export async function enableGuard(circleToken: string): Promise<ApiResponse<GuardTokenOut>> {
+  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/guard`, { method: "POST" });
+  return res.json();
+}
+
+export async function regenerateGuard(circleToken: string): Promise<ApiResponse<GuardTokenOut>> {
+  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/guard/regenerate`, {
+    method: "POST",
+  });
+  return res.json();
+}
+
+export async function disableGuard(
+  circleToken: string
+): Promise<ApiResponse<{ guard_enabled: boolean }>> {
+  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/guard/disable`, {
+    method: "POST",
+  });
+  return res.json();
+}
+
+/** Fires a message at the REAL Auto-Guard webhook — not a simulator
+ * endpoint, the exact route an SMS-forwarder app or Twilio number calls in
+ * production. Used by the guardian dashboard's "send a test message" demo:
+ * proof this works end to end is the alert it produces actually landing in
+ * `getCircleStatus`'s alert history afterward, not a canned response here. */
+export async function sendGuardTestMessage(
+  webhookUrl: string,
+  fromLabel: string,
+  body: string
+): Promise<{ ok: boolean }> {
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: fromLabel, body }),
+    });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export async function revokeKey(
