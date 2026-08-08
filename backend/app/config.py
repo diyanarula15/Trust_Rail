@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     channel_telegram_enabled: bool = False
     telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
 
     channel_email_enabled: bool = False
     email_imap_host: str = ""
@@ -68,6 +69,10 @@ class Settings(BaseSettings):
 
     # Rate limit (spec §9)
     verify_rate_limit_per_min: int = 30
+
+    # Trust Circle (elder<->guardian pairing + alerting)
+    trust_circle_enabled: bool = True
+    circle_pairing_code_ttl_minutes: int = 15
 
 
 @lru_cache

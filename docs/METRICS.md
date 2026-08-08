@@ -50,7 +50,7 @@ Overall: precision **1.000**, recall **1.000**, F1 **1.000** (0 false positives 
 | claims_risk | 0.0 | 0.0 |
 | hard_binding | 0.0 | 0.0 |
 | registry_match | 0.0 | 0.0 |
-| **end-to-end** | **16.4** | **26.1** |
+| **end-to-end** | **28.9** | **48.6** |
 
 ### Verdict confusion (expected vs. actual)
 

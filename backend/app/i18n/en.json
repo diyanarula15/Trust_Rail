@@ -221,5 +221,12 @@
     "PAYMENT_ASK": "Asks for a direct payment or transfer.",
     "URL_RISK": "Contains a suspicious link.",
     "NO_OFFICIAL_CLAIM": "Does not claim to be from any registered entity."
+  },
+  "circle": {
+    "pair_start_reply": "Your Trust Circle code: {code}\n\nGive this to a family member. They can link up at {url}, or reply here with \"/circle {code}\" from their own chat to get alerts sent directly to them.\n\nThis code expires in {ttl} minutes.",
+    "pair_invalid_code": "That code isn't valid or has expired. Send /circle again for a fresh one.",
+    "pair_link_confirmed": "You're now linked as a Trust Circle guardian. If something risky reaches them, you'll be alerted here.",
+    "alert_subject": "TrustRail Trust Circle alert",
+    "alert_intro": "This was flagged and blocked automatically — no action needed from you."
   }
 }

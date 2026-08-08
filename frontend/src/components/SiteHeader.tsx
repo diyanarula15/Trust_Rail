@@ -14,6 +14,8 @@ import { ShieldCheck } from "lucide-react";
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/verify", label: "Verify" },
+  { href: "/channels", label: "Channels" },
+  { href: "/trust-circle", label: "Trust Circle" },
   { href: "/log", label: "Public record" },
   { href: "/registry", label: "Registry" },
   { href: "/issuer", label: "Issuer" },

@@ -11,32 +11,54 @@ Neither exists for this project yet.
 What *is* real: the webhook contract itself
 (`GET`/`POST /api/webhooks/whatsapp` in `backend/app/api/webhooks_whatsapp.py`),
 signature verification, the two-step media-download shape, and — as
-always — the verification pipeline. Test it right now with the backend
-running (`CHANNEL_WHATSAPP_ENABLED=true` in `.env`, or set inline for a
-one-off run):
+always — the verification pipeline (`_handle_one` in
+`webhooks_whatsapp.py` drains the exact same `_run_verification` generator
+`POST /api/verify` uses). Test it right now with the backend running:
 
 ```
 cd backend
-CHANNEL_WHATSAPP_ENABLED=true .venv/Scripts/python.exe -m scripts.whatsapp_sim --file ../assets_input/image1.jpg
+CHANNEL_WHATSAPP_ENABLED=true WHATSAPP_APP_SECRET=sim_test_secret \
+  .venv/Scripts/python.exe -m uvicorn app.main:app --port 8000
+```
+
+then in another terminal:
+
+```
+CHANNEL_WHATSAPP_ENABLED=true WHATSAPP_APP_SECRET=sim_test_secret \
+  .venv/Scripts/python.exe -m scripts.whatsapp_sim --file ../fixtures/generated/notice_meridian_margin.jpg
 .venv/Scripts/python.exe -m scripts.whatsapp_sim --text "Buy now, guaranteed returns!"
 ```
 
-This builds a byte-accurate fake Cloud API webhook payload
+`WHATSAPP_APP_SECRET` doesn't need to be a real Meta value here — the
+webhook's signature check (`channels/whatsapp.verify_webhook_signature`)
+**fails closed**: with no secret configured it rejects every request
+outright (deliberately — an unsigned webhook accepting fabricated
+verification traffic would be a bad look for a system whose entire product
+is authenticity). Setting any matching value on both the server and
+`whatsapp_sim.py` is enough to exercise the real HMAC check end to end
+locally.
+
+This builds a realistic fake Cloud API webhook payload
 (`entry[].changes[].value.messages[]`, Meta's real shape) and **really
-POSTs it over HTTP** to your locally-running backend — it's not an
-in-process shortcut, the whole route (including signature verification, if
-`WHATSAPP_APP_SECRET` is set) runs for real. The verdict is genuine, run
+POSTs it over HTTP** to your locally-running backend — the whole route
+runs for real, signature check included. The verdict is genuine, run
 against the real seeded registry. Only two things are faked, both clearly
-marked:
+marked in the code:
 - the media itself: since there's no live Graph API to resolve a fake
   `media_id`, the simulator attaches a `_sim_local_path` key (never present
-  in a real Meta payload) that `channels/whatsapp.py` reads bytes from
-  directly instead of calling the Graph API;
-- the reply: instead of a real `POST` to the Graph API's `/messages`
-  endpoint, the composed message is returned in the webhook's own HTTP
-  response under `simulated_outbound` (Meta's real contract ignores the
-  webhook's response body entirely, so this is purely additive and
-  disappears automatically once real credentials are set).
+  in a real Meta payload) that `channels/whatsapp.download_media` reads
+  bytes from directly instead of calling the Graph API;
+- the reply: `channels/whatsapp.send_text` calls the real Graph API only
+  when `enabled()` is true (`CHANNEL_WHATSAPP_ENABLED` + a real
+  `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`); otherwise it logs the
+  composed message instead of sending it. The webhook's HTTP response
+  itself just reports `{"handled": N}` (matching Meta's real contract,
+  which never inspects the response body) — **the composed reply is only
+  visible in the backend's own log**, e.g. run uvicorn with logging
+  configured (`python -c "import logging;
+  logging.basicConfig(level=logging.INFO); import uvicorn;
+  uvicorn.run('app.main:app', port=8000)"`) to see it printed as
+  `app.channels.whatsapp INFO: whatsapp disabled; reply for ...`.
 
 ## Going live (when a Meta Business account exists)
 
@@ -59,21 +81,18 @@ marked:
    WHATSAPP_APP_SECRET=<from the Meta app's Basic Settings, enables real signature checks>
    ```
 5. Message the test number from WhatsApp. It should reply with the real
-   verdict.
+   verdict as plain WhatsApp text (`channels/whatsapp.format_card`).
 
-## The one real fidelity gap: buttons
+## Design notes
 
-Meta's real interactive **session** messages support at most **one** URL
-button (`interactive.type: "cta_url"`) — there's no native multi-URL-button
-message type the way Telegram's `inline_keyboard` has. This project's
-`render_verdict()` can produce up to 3 buttons (certificate, SEBI-check,
-and a web-only "expand trace" accordion trigger with no chat equivalent).
-
-**Resolution** (in `channels/whatsapp.py::_format_reply`): send one
-`cta_url` message carrying the highest-priority link (the certificate if
-present, otherwise SEBI-check) alongside the headline/body/top reason, then
-a plain-text follow-up with any remaining reason strings and the other URL
-as a bare `https://` string (WhatsApp auto-links these in body text — no
-button chrome, but still tappable). This is a deliberate, documented
-deviation from the original build spec's "interactive button message"
-wording, not an oversight.
+- The webhook always returns `200` to Meta, even on internal failure —
+  Meta retries non-200 responses aggressively, and a retry storm on a
+  failing message helps nobody. Problems are logged server-side instead
+  (see `api/webhooks_whatsapp.py`'s module docstring).
+- Replies are plain WhatsApp text, not interactive button messages —
+  `format_card()` renders the certificate link as a plain
+  `label: https://...` line (WhatsApp auto-links bare URLs in body text)
+  rather than a native button. Simpler than the interactive `cta_url`
+  message type, and avoids Meta's real limit of one URL button per
+  session message, which doesn't map cleanly onto this project's up-to-2
+  URL buttons (certificate + SEBI-check).

@@ -179,7 +179,7 @@ export interface VerifyInput {
   claimedSenderText?: string;
   stateCode?: string;
   locale?: Locale;
-  channel?: "sim" | "whatsapp";
+  channel?: "sim" | "whatsapp" | "telegram";
 }
 
 export async function verifySubmit(
@@ -284,6 +284,64 @@ export async function verifyStream(
       }
     }
   }
+}
+
+/**
+ * /api/sim/* — a frontend-only demo endpoint, distinct from the real
+ * channel webhooks (backend/app/api/webhooks_telegram.py,
+ * webhooks_whatsapp.py). It runs the exact same verification pipeline and
+ * the exact same reply-formatting functions those webhooks use
+ * (channels/telegram.py::build_reply, channels/whatsapp.py::build_reply),
+ * but never sends anything anywhere — it exists purely so this app can
+ * show what a Telegram/WhatsApp reply would literally say.
+ */
+export interface ChannelSimInput {
+  file?: File;
+  text?: string;
+  /** Caption on a forwarded photo/document/video — irrelevant for a plain
+   * text message, matching how a real caption field works. */
+  caption?: string;
+}
+
+export interface TelegramSimReply {
+  /** The literal Telegram message text, incl. its <b>bold</b> HTML tag. */
+  text: string;
+  buttons: ButtonSpec[];
+  card: CardPayload;
+}
+
+export interface WhatsAppSimReply {
+  /** The literal WhatsApp message text, incl. its *bold* markdown-style tag. */
+  text: string;
+  card: CardPayload;
+}
+
+function channelSimForm(input: ChannelSimInput): FormData {
+  const form = new FormData();
+  if (input.file) form.append("file", input.file);
+  if (input.text !== undefined) form.append("text", input.text);
+  if (input.caption) form.append("caption", input.caption);
+  return form;
+}
+
+export async function simTelegram(
+  input: ChannelSimInput
+): Promise<ApiResponse<TelegramSimReply>> {
+  const res = await fetch(`${API_BASE_URL}/api/sim/telegram`, {
+    method: "POST",
+    body: channelSimForm(input),
+  });
+  return res.json();
+}
+
+export async function simWhatsapp(
+  input: ChannelSimInput
+): Promise<ApiResponse<WhatsAppSimReply>> {
+  const res = await fetch(`${API_BASE_URL}/api/sim/whatsapp`, {
+    method: "POST",
+    body: channelSimForm(input),
+  });
+  return res.json();
 }
 
 export async function getVerification(
@@ -522,6 +580,62 @@ export async function revokeCommunication(
     `${API_BASE_URL}/api/issuer/communications/${commId}/revoke`,
     { method: "POST", headers: personaHeaders(personaKeyId) }
   );
+  return res.json();
+}
+
+// --- Trust Circle ---
+// No auth exists in this app — possession of `circle_token` (an unguessable
+// random token, the same bearer-capability pattern as certificate links)
+// is what proves you're the guardian for a given circle.
+
+export interface CircleAlertOut {
+  verdict: string;
+  plain_headline: string;
+  campaign: string | null;
+  delivered_via: "channel" | "email" | "none";
+  created_at: string;
+}
+
+export interface CircleStatusOut {
+  status: "pending" | "active" | "revoked";
+  elder_channel: "whatsapp" | "telegram" | "email";
+  elder_masked: string;
+  guardian_name: string | null;
+  guardian_email: string | null;
+  guardian_channel: "whatsapp" | "telegram" | "email" | null;
+  alerts: CircleAlertOut[];
+}
+
+export async function pairCircleComplete(input: {
+  code: string;
+  guardianName: string;
+  guardianEmail: string;
+}): Promise<ApiResponse<{ circle_token: string }>> {
+  const res = await fetch(`${API_BASE_URL}/api/circle/pair/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code: input.code,
+      guardian_name: input.guardianName,
+      guardian_email: input.guardianEmail,
+    }),
+  });
+  return res.json();
+}
+
+export async function getCircleStatus(
+  circleToken: string
+): Promise<ApiResponse<CircleStatusOut>> {
+  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}`);
+  return res.json();
+}
+
+export async function revokeCircle(
+  circleToken: string
+): Promise<ApiResponse<{ status: string }>> {
+  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/revoke`, {
+    method: "POST",
+  });
   return res.json();
 }
 

@@ -18,9 +18,10 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.channels import whatsapp
+from app.circle import pairing as circle_pairing
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import VerifyChannel
+from app.models import CircleChannel
 from app.pipeline.ingest import IngestError, ingest_file, ingest_text
 from app.schemas import err, ok
 
@@ -97,7 +98,12 @@ def _handle_one(
     sender: str, kind: str, text: str | None, media_id: str | None, sim_local_path: str | None = None
 ) -> None:
     """One inbound message → one verdict reply, via the shared pipeline."""
-    from app.api.verify import _run_verification  # local import avoids a cycle
+    if kind == "text" and text and text.strip():
+        with SessionLocal() as db:
+            circle_reply = circle_pairing.handle_circle_command(db, CircleChannel.whatsapp, sender, text)
+        if circle_reply is not None:
+            whatsapp.send_text(sender, circle_reply)
+            return
 
     if media_id:
         media = whatsapp.download_media(media_id, sim_local_path)
@@ -124,20 +130,8 @@ def _handle_one(
         )
         return
 
-    card: dict = {}
     with SessionLocal() as db:
-        for kind_, payload in _run_verification(
-            db,
-            ingest_result,
-            claimed_sender_text=text if media_id else None,
-            state_code=None,
-            channel=VerifyChannel.whatsapp,
-            locale=get_settings().default_locale,
-        ):
-            if kind_ == "result":
-                card = payload
-
-    if card:
-        from app.channels.render import CardPayload
-
-        whatsapp.send_text(sender, whatsapp.format_card(CardPayload.model_validate(card)))
+        text_reply, _card = whatsapp.build_reply(
+            ingest_result, text if media_id else None, db, sender_external_id=sender
+        )
+    whatsapp.send_text(sender, text_reply)

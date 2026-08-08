@@ -19,7 +19,7 @@ from pathlib import Path
 from PIL import Image
 from sqlalchemy import select
 
-from app.pipeline.verify_service import _blacklist_refs, _downgrade_if_key_revoked, _load_candidates
+from app.api.verify import _blacklist_refs, _downgrade_if_key_revoked, _load_candidates
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import Communication, CommStatus

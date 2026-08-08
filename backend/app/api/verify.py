@@ -42,6 +42,7 @@ from app.channels.render import (
     render_verdict,
     stage_copy,
 )
+from app.circle.alerts import maybe_alert_guardians
 from app.config import get_settings
 from app.db import SessionLocal, get_db, get_redis
 from app.models import (
@@ -359,6 +360,7 @@ def _run_verification(
     state_code: str | None,
     channel: VerifyChannel,
     locale: str,
+    sender_external_id: str | None = None,
 ) -> Iterator[tuple[str, dict]]:
     """The pipeline, as a sequence of observable stages.
 
@@ -529,7 +531,17 @@ def _run_verification(
         sebi_check_url=settings.sebi_check_url,
         match_evidence=match_evidence,
     )
-    yield ("result", render_verdict(ctx).model_dump(mode="json"))
+    card = render_verdict(ctx).model_dump(mode="json")
+
+    # Trust Circle: transient identity lookup only, never persisted onto
+    # `verification` above — see app/circle/alerts.py's module docstring.
+    if maybe_alert_guardians(
+        db, channel=channel, sender_external_id=sender_external_id,
+        decision=decision, card=card,
+    ):
+        card["circle_alert_sent"] = True
+
+    yield ("result", card)
 
 
 async def _prepare(

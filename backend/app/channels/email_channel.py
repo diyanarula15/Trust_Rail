@@ -18,9 +18,10 @@ from typing import Any, NamedTuple
 from sqlalchemy.orm import Session
 
 from app.channels.util import card_buttons
+from app.circle import pairing as circle_pairing
 from app.config import get_settings
 from app.db import get_redis
-from app.models import VerifyChannel
+from app.models import CircleChannel, VerifyChannel
 from app.pipeline.emailcheck import parse_eml
 from app.pipeline.ingest import ingest_eml_bytes
 from app.pipeline.verify_service import rate_limit, run_verification
@@ -136,17 +137,31 @@ def handle_raw_message(raw: bytes, db: Session) -> EmailMessage | None:
             in_reply_to=headers.message_id, references=headers.references,
         )
 
+    circle_reply = circle_pairing.handle_circle_command(
+        db, CircleChannel.email, from_addr, f"{parsed.subject or ''}\n{parsed.body_text or ''}"
+    )
+    if circle_reply is not None:
+        return _send_reply(
+            to_addr=from_addr, subject=parsed.subject, body=circle_reply,
+            in_reply_to=headers.message_id, references=headers.references,
+        )
+
     ingest_result = ingest_eml_bytes(raw)
     card: dict = {}
     for kind, payload in run_verification(
         db, ingest_result, claimed_sender_text=None,
         state_code=None, channel=VerifyChannel.email, locale="en",
+        sender_external_id=from_addr,
     ):
         if kind == "result":
             card = payload
 
+    body = _format_reply_text(card)
+    if card.get("circle_alert_sent"):
+        body += "\n\n🚨 Your family member has been notified about this."
+
     return _send_reply(
-        to_addr=from_addr, subject=parsed.subject, body=_format_reply_text(card),
+        to_addr=from_addr, subject=parsed.subject, body=body,
         in_reply_to=headers.message_id, references=headers.references,
     )
 

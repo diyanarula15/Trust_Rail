@@ -104,6 +104,18 @@ class BlacklistKind(str, enum.Enum):
     phrase = "phrase"
 
 
+class CircleChannel(str, enum.Enum):
+    whatsapp = "whatsapp"
+    telegram = "telegram"
+    email = "email"
+
+
+class CircleStatus(str, enum.Enum):
+    pending = "pending"
+    active = "active"
+    revoked = "revoked"
+
+
 class TimestampedBase(Base):
     __abstract__ = True
 
@@ -277,3 +289,47 @@ class ViewToken(TimestampedBase):
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TrustCircle(TimestampedBase):
+    """One elder<->guardian link. Deliberately NOT joined to `Verification` —
+    that table's whole point (see api/telemetry.py) is that a submitter's
+    identity is never persisted. Only senders who opt into a circle get this
+    extra, separate identity linkage."""
+
+    __tablename__ = "trust_circles"
+
+    elder_channel: Mapped[CircleChannel] = mapped_column(Enum(CircleChannel, name="circle_channel"))
+    elder_external_id: Mapped[str] = mapped_column(String(200))  # normalized phone/chat_id/email
+
+    pairing_code: Mapped[str] = mapped_column(String(6))
+    pairing_code_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    guardian_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    guardian_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    guardian_channel: Mapped[CircleChannel | None] = mapped_column(
+        Enum(CircleChannel, name="circle_channel"), nullable=True
+    )
+    guardian_channel_external_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    circle_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    status: Mapped[CircleStatus] = mapped_column(
+        Enum(CircleStatus, name="circle_status"), default=CircleStatus.pending
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_trust_circles_elder", "elder_channel", "elder_external_id"),
+    )
+
+
+class CircleAlert(TimestampedBase):
+    """Append-only log of guardian notifications fired for a TrustCircle."""
+
+    __tablename__ = "circle_alerts"
+
+    circle_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trust_circles.id"))
+    verdict: Mapped[str] = mapped_column(String(40))
+    plain_headline: Mapped[str] = mapped_column(String(300))
+    campaign: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    delivered_via: Mapped[str] = mapped_column(String(20))  # "channel" | "email" | "none"
