@@ -27,7 +27,7 @@ web:
 	cd frontend && $(PNPM) dev
 
 check:
-	cd backend && .venv/bin/pytest -q tests && .venv/bin/python -m scripts.smoke
+	cd backend && .venv/bin/pytest -q tests && .venv/bin/python -m scripts.smoke && .venv/bin/python -m scripts.smoke_epic5
 
 eval:
 	cd backend && .venv/bin/python -m scripts.evaluate

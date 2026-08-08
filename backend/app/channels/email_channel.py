@@ -40,6 +40,27 @@ class _TransportHeaders(NamedTuple):
     content_type: str
 
 
+def _unwrap_nested_eml(raw: bytes) -> bytes:
+    """If this message carries an original email as a message/rfc822
+    attachment — a common way mail clients let you forward "as attachment"
+    rather than inline — that attachment is the actual suspicious content
+    to verify; the outer message is normally just the forwarder's own "look
+    at this" wrapper text. Falls back to the outer message's own bytes when
+    there's no such attachment (the ordinary inline-forward case).
+
+    Only affects what gets verified — parse_eml()/_transport_headers() on
+    the outer `raw` still decide who to reply to and how to thread it, so a
+    reply always goes to the person who forwarded it, never to whoever the
+    nested message claims to be from."""
+    msg = email_stdlib.message_from_bytes(raw, policy=email_policy)
+    for part in msg.walk():
+        if part.get_content_type() == "message/rfc822":
+            nested = part.get_payload(0)
+            if nested is not None:
+                return nested.as_bytes()
+    return raw
+
+
 def _transport_headers(raw: bytes) -> _TransportHeaders:
     msg = email_stdlib.message_from_bytes(raw, policy=email_policy)
     return _TransportHeaders(
@@ -146,7 +167,7 @@ def handle_raw_message(raw: bytes, db: Session) -> EmailMessage | None:
             in_reply_to=headers.message_id, references=headers.references,
         )
 
-    ingest_result = ingest_eml_bytes(raw)
+    ingest_result = ingest_eml_bytes(_unwrap_nested_eml(raw))
     card: dict = {}
     for kind, payload in run_verification(
         db, ingest_result, claimed_sender_text=None,

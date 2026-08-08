@@ -35,11 +35,26 @@ cd backend && .venv/bin/uvicorn app.main:app --port 8000
 populated with `filing1.pdf, filing2.pdf, filing3.pdf, image1.jpg,
 image2.jpg, image3.jpg, ceo_announcement.mp4`.
 
-`make check` / `make eval` exist for machines with `make` installed; on
-this dev machine (Windows, no `make`) the underlying commands are run
-directly. See `Makefile` for exactly what each target chains, and
-PROGRESS.md's "Epic 5 pre-flight" entry for the Windows-specific setup
-notes (port conflicts, `python-magic`, console encoding).
+`make check` / `make eval` exist for machines with `make` installed. This
+dev machine (Windows) has neither `make` nor a POSIX `.venv/bin` layout, so
+the Makefile's targets don't run as-is here — see PROGRESS.md's "Epic 5
+pre-flight" entry for the Windows-specific setup notes (port conflicts,
+`python-magic`, console encoding) and `Makefile` for exactly what each
+target chains if you want to run the underlying commands by hand.
+
+For everyday local dev on Windows, use the two scripts at the repo root
+instead of `make up`/`make api`/`make web`:
+
+```bash
+./dev-up.sh      # brings up Docker, kills anything stale on 8000/3000,
+                 # starts backend + frontend, waits for both to be healthy
+./dev-down.sh    # stops backend + frontend (leaves Postgres/Redis running)
+```
+
+They exist because this exact environment repeatedly needed manual
+recovery from stopped Docker containers and orphaned Node/uvicorn
+processes surviving a plain "stop" — both scripts clean those up by port
+before starting anything, rather than assuming a clean slate.
 
 ## Screenshots
 

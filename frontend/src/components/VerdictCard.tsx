@@ -71,7 +71,10 @@ export function VerdictCard({
   const style = VERDICT_STYLE[card.verdict] ?? VERDICT_STYLE.INFORMATIONAL;
   const { Icon } = style;
   const traceButton = card.buttons.find((b) => b.kind === "expand_trace");
-  const otherButtons = card.buttons.filter((b) => b.kind !== "expand_trace");
+  // "#" is SEBI_CHECK_URL's unset-placeholder value (this prototype has no
+  // real target for it) — rendering it as a clickable link would be a dead
+  // button; the same reminder already appears in `card.advice` as plain text.
+  const otherButtons = card.buttons.filter((b) => b.kind !== "expand_trace" && b.url !== "#");
   const plainReasons =
     card.plain_reason_strings?.length > 0 ? card.plain_reason_strings : card.reason_strings;
 

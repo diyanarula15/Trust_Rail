@@ -16,11 +16,13 @@ def absolutize(url: str) -> str:
 
 def card_buttons(card: dict[str, Any]) -> list[dict[str, str]]:
     """`card["buttons"]` (from run_verification's rendered dict) with every
-    url absolutized, and any button carrying an empty url (e.g. render.py's
-    "expand_trace", a pure web-UI accordion trigger) dropped — no chat/email
-    channel has an equivalent for it."""
+    url absolutized, and any button with nothing real to link to dropped:
+    an empty url (render.py's "expand_trace", a pure web-UI accordion
+    trigger with no chat/email equivalent) or the literal "#" placeholder
+    (SEBI_CHECK_URL is unset in this prototype — a dead link is worse than
+    no button; the same reminder is already in the card's `advice` text)."""
     return [
         {**b, "url": absolutize(b["url"])}
         for b in card.get("buttons", [])
-        if b.get("url")
+        if b.get("url") and b["url"] != "#"
     ]
