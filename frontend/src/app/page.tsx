@@ -14,6 +14,7 @@ import {
   Upload,
 } from "lucide-react";
 import { getTelemetrySummary } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 import {
   MockAutoGuard,
   MockFingerprint,
@@ -208,7 +209,7 @@ export default async function LandingPage() {
 
       {/* ---------------- The thesis ---------------- */}
       <section className="border-b border-hairline">
-        <div className="mx-auto max-w-4xl px-6 py-16 text-center sm:py-20">
+        <Reveal className="mx-auto max-w-4xl px-6 py-16 text-center sm:py-20">
           <div className="tr-eyebrow">The idea</div>
           <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             Detection guesses. Provenance proves.
@@ -220,7 +221,7 @@ export default async function LandingPage() {
             refuses to say &ldquo;genuine&rdquo; without either a valid signature or a match
             against that record.
           </p>
-        </div>
+        </Reveal>
       </section>
 
       {/* ---------------- Alternating feature bands ---------------- */}
@@ -229,7 +230,7 @@ export default async function LandingPage() {
           key={title}
           className={`border-b border-hairline ${i % 2 === 1 ? "tr-band" : ""}`}
         >
-          <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16">
+          <Reveal className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16">
             <div className={flip ? "lg:order-2" : ""}>
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-seal" aria-hidden />
@@ -258,7 +259,7 @@ export default async function LandingPage() {
             <div className={flip ? "lg:order-1" : ""}>
               <Mock />
             </div>
-          </div>
+          </Reveal>
         </section>
       ))}
 
@@ -268,7 +269,7 @@ export default async function LandingPage() {
           answer) and Auto-Guard (nobody has to do anything at all). ---- */}
       <section className="tr-hero border-b border-hairline">
         <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <div className="flex items-center justify-center gap-2">
               <HeartHandshake className="h-4 w-4 text-seal" aria-hidden />
               <span className="tr-eyebrow">Family protection</span>
@@ -281,9 +282,9 @@ export default async function LandingPage() {
               often the person least likely to check it first. Trust Circle links their phone
               to yours, so a scam gets caught even when they never think to ask.
             </p>
-          </div>
+          </Reveal>
 
-          <div className="mt-12 grid gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
+          <Reveal delay={100} className="mt-12 grid gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
             <div>
               <div className="flex items-center gap-2">
                 <Smartphone className="h-4 w-4 text-seal" aria-hidden />
@@ -319,9 +320,9 @@ export default async function LandingPage() {
               </a>
             </div>
             <MockAutoGuard />
-          </div>
+          </Reveal>
 
-          <div className="mx-auto mt-12 max-w-3xl rounded-xl border border-hairline bg-card p-5 text-center">
+          <Reveal delay={150} className="mx-auto mt-12 max-w-3xl rounded-xl border border-hairline bg-card p-5 text-center">
             <p className="text-sm leading-relaxed text-info">
               Prefer the reactive version? They can also just forward anything suspicious
               straight to the bot on WhatsApp, Telegram, SMS or email and get an answer back
@@ -331,14 +332,14 @@ export default async function LandingPage() {
               </a>
               . Auto-Guard and the reactive bots work independently; most families use both.
             </p>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ---------------- The five answers ---------------- */}
       <section className="border-b border-hairline">
         <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <div className="tr-eyebrow">What you get back</div>
             <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
               Five possible answers
@@ -347,18 +348,18 @@ export default async function LandingPage() {
               No score out of a hundred, no traffic light you have to interpret. One of these,
               every time, with the reason attached.
             </p>
-          </div>
+          </Reveal>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {VERDICTS.map(({ Icon, tone, title, body }, i) => (
-              <div
+              <Reveal
                 key={title}
-                className="tr-rise tr-lift rounded-xl border border-hairline bg-card p-5 shadow-sm"
-                style={{ ["--tr-delay" as string]: `${i * 70}ms` }}
+                delay={i * 70}
+                className="tr-lift rounded-xl border border-hairline bg-card p-5 shadow-sm"
               >
                 <Icon className={`h-6 w-6 ${tone}`} aria-hidden />
                 <h3 className={`mt-3 font-display text-base font-bold ${tone}`}>{title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-info">{body}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -367,7 +368,7 @@ export default async function LandingPage() {
       {/* ---------------- Trust / how it holds up ---------------- */}
       <section className="tr-band border-b border-hairline">
         <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <Lock className="mx-auto h-6 w-6 text-seal" aria-hidden />
             <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
               Built so you do not have to take our word for it
@@ -376,7 +377,7 @@ export default async function LandingPage() {
               The cryptography is real, not illustrative. These numbers come from the
               evaluation and acceptance suites in the repository, not a slide.
             </p>
-          </div>
+          </Reveal>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { v: "1.000", l: "matching precision", d: "across 81 evaluation cases" },
@@ -384,15 +385,15 @@ export default async function LandingPage() {
               { v: "112", l: "backend tests", d: "including the no-unproven-verdict guardrail" },
               { v: "831", l: "proof vectors", d: "verified in Python and TypeScript alike" },
             ].map((s, i) => (
-              <div
+              <Reveal
                 key={s.l}
-                className="tr-rise rounded-xl border border-hairline bg-card p-5 shadow-sm"
-                style={{ ["--tr-delay" as string]: `${i * 70}ms` }}
+                delay={i * 70}
+                className="rounded-xl border border-hairline bg-card p-5 shadow-sm"
               >
                 <div className="font-mono text-2xl font-medium text-ink">{s.v}</div>
                 <div className="mt-1 text-sm font-medium text-ink">{s.l}</div>
                 <div className="mt-0.5 text-xs leading-relaxed text-info">{s.d}</div>
-              </div>
+              </Reveal>
             ))}
           </div>
           <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-info">
@@ -404,7 +405,7 @@ export default async function LandingPage() {
 
       {/* ---------------- Closing CTA ---------------- */}
       <section className="tr-hero">
-        <div className="mx-auto max-w-3xl px-6 py-20 text-center sm:py-24">
+        <Reveal className="mx-auto max-w-3xl px-6 py-20 text-center sm:py-24">
           <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-[2.6rem]">
             Try it on something suspicious.
           </h2>
@@ -420,7 +421,7 @@ export default async function LandingPage() {
               Open the dashboard
             </a>
           </div>
-        </div>
+        </Reveal>
       </section>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChatSimulator, type ChatTurn, type Platform } from "@/components/ChatSimulator";
+import { Reveal } from "@/components/Reveal";
 import { simSms, simTelegram, simWhatsapp } from "@/lib/api";
 
 const PLATFORMS: Platform[] = ["telegram", "whatsapp", "sms"];
@@ -57,7 +58,7 @@ export default function ChannelsPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-2xl flex-col px-6 py-10 sm:py-14">
-      <div className="mb-6 border-b border-hairline pb-6">
+      <Reveal className="mb-6 border-b border-hairline pb-6">
         <div className="font-mono text-xs uppercase tracking-[0.18em] text-seal">
           See it as a real conversation
         </div>
@@ -89,7 +90,7 @@ export default function ChannelsPage() {
             </button>
           ))}
         </div>
-      </div>
+      </Reveal>
 
       <ChatSimulator
         platform={platform}

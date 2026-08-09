@@ -11,6 +11,7 @@ import {
   type LogRoot,
 } from "@/lib/api";
 import { verifyInclusion, verifySth } from "@/lib/merkle";
+import { Reveal } from "@/components/Reveal";
 import { Badge, Card, EmptyState, Page, PageHeader, TableWrap, Th } from "@/components/ui";
 
 type CheckState = "checking" | "valid" | "invalid";
@@ -88,13 +89,16 @@ export default function LogPage() {
 
   return (
     <Page wide>
-      <PageHeader
-        eyebrow="Append-only, tamper-evident"
-        title="Public record"
-        lead="Every publication and every withdrawal, in the order it happened. Entries cannot be altered or removed after the fact without the record's fingerprint changing, and your browser checks that mathematically rather than taking our word for it."
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="Append-only, tamper-evident"
+          title="Public record"
+          lead="Every publication and every withdrawal, in the order it happened. Entries cannot be altered or removed after the fact without the record's fingerprint changing, and your browser checks that mathematically rather than taking our word for it."
+        />
+      </Reveal>
 
       {root && (
+        <Reveal delay={80}>
         <Card accent="border-l-ink" className="mb-6 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
@@ -122,9 +126,10 @@ export default function LogPage() {
             </div>
           </div>
         </Card>
+        </Reveal>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <Reveal delay={140} className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div>
           {entries.length === 0 ? (
             <EmptyState
@@ -241,7 +246,7 @@ export default function LogPage() {
             </Card>
           )}
         </div>
-      </div>
+      </Reveal>
     </Page>
   );
 }

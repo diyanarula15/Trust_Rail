@@ -166,6 +166,22 @@ body {
   animation-delay: var(--tr-delay, 0ms);
 }
 
+/* Scroll-triggered reveal: starts hidden, a JS class toggle (Reveal.tsx,
+   via IntersectionObserver) flips it to visible once it enters the
+   viewport. Kept separate from .tr-rise above, which always plays on
+   mount and is right for above-the-fold content (the hero) where there's
+   no scrolling to trigger off yet. */
+.tr-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--tr-delay, 0ms);
+}
+.tr-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

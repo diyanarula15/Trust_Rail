@@ -24,6 +24,7 @@ import {
 import { IntakePanel } from "@/components/IntakePanel";
 import { CountUp } from "@/components/CountUp";
 import { PipelineExplainer } from "@/components/PipelineExplainer";
+import { Reveal } from "@/components/Reveal";
 import { Card, EmptyState, Page, PageHeader, SectionTitle } from "@/components/ui";
 
 const POLL_MS = 10_000;
@@ -170,17 +171,19 @@ export default function DashboardPage() {
 
   return (
     <Page wide>
-      <PageHeader
-        eyebrow="System overview"
-        title="Dashboard"
-        lead="What TrustRail is doing right now: how many messages have been checked, what the answers were, which scam campaigns are running, and the state of the tamper-proof record everything is checked against."
-        actions={
-          <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card px-3 py-1.5 text-xs text-info">
-            <span className="tr-breathe h-1.5 w-1.5 rounded-full bg-verified" aria-hidden />
-            live · refreshes every 10s
-          </span>
-        }
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="System overview"
+          title="Dashboard"
+          lead="What TrustRail is doing right now: how many messages have been checked, what the answers were, which scam campaigns are running, and the state of the tamper-proof record everything is checked against."
+          actions={
+            <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card px-3 py-1.5 text-xs text-info">
+              <span className="tr-breathe h-1.5 w-1.5 rounded-full bg-verified" aria-hidden />
+              live · refreshes every 10s
+            </span>
+          }
+        />
+      </Reveal>
 
       {/* --- headline numbers --- */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -241,25 +244,31 @@ export default function DashboardPage() {
 
       {/* --- how content gets in --- */}
       <section className="mt-12">
-        <SectionTitle hint="Verification is only possible because something authoritative was published first. These are the ways that happens — two of them are infrastructure that already exists, so issuers are not asked to do anything new.">
-          Where the record comes from
-        </SectionTitle>
+        <Reveal>
+          <SectionTitle hint="Verification is only possible because something authoritative was published first. These are the ways that happens — two of them are infrastructure that already exists, so issuers are not asked to do anything new.">
+            Where the record comes from
+          </SectionTitle>
+        </Reveal>
         <IntakePanel status={ingest} onRefresh={() => setRefreshTick((n) => n + 1)} />
       </section>
 
       {/* --- how a check actually works --- */}
       <section className="mt-12">
-        <SectionTitle hint="Every message goes through these four steps, in this order, and stops at the first one that proves something.">
-          How a check works
-        </SectionTitle>
+        <Reveal>
+          <SectionTitle hint="Every message goes through these four steps, in this order, and stops at the first one that proves something.">
+            How a check works
+          </SectionTitle>
+        </Reveal>
         <PipelineExplainer />
       </section>
 
       {/* --- what the answers mean, with live counts --- */}
       <section className="mt-12">
-        <SectionTitle hint="Five possible answers. The counts are from the last 14 days.">
-          What the answers mean
-        </SectionTitle>
+        <Reveal>
+          <SectionTitle hint="Five possible answers. The counts are from the last 14 days.">
+            What the answers mean
+          </SectionTitle>
+        </Reveal>
         <div className="space-y-2">
           {VERDICTS.map((v, i) => {
             const count = totals[v.key] ?? 0;
@@ -301,9 +310,11 @@ export default function DashboardPage() {
       {/* --- live feed + threats --- */}
       <section className="mt-12 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
         <div>
-          <SectionTitle hint="The most recent checks. What people sent is never stored, so only the outcome is shown.">
-            Live activity
-          </SectionTitle>
+          <Reveal>
+            <SectionTitle hint="The most recent checks. What people sent is never stored, so only the outcome is shown.">
+              Live activity
+            </SectionTitle>
+          </Reveal>
           {recent.length === 0 ? (
             <EmptyState
               title="Nothing checked yet"
@@ -345,9 +356,11 @@ export default function DashboardPage() {
         </div>
 
         <div>
-          <SectionTitle hint="Groups of messages sharing a fake address, image or phrase — one operation seen repeatedly.">
-            Scam campaigns running now
-          </SectionTitle>
+          <Reveal>
+            <SectionTitle hint="Groups of messages sharing a fake address, image or phrase — one operation seen repeatedly.">
+              Scam campaigns running now
+            </SectionTitle>
+          </Reveal>
           {campaigns.length === 0 ? (
             <EmptyState title="No campaigns detected" />
           ) : (
@@ -377,9 +390,11 @@ export default function DashboardPage() {
           )}
 
           <div className="mt-6">
-            <SectionTitle hint="Whose name scammers put on messages most often.">
-              Most imitated
-            </SectionTitle>
+            <Reveal>
+              <SectionTitle hint="Whose name scammers put on messages most often.">
+                Most imitated
+              </SectionTitle>
+            </Reveal>
             {(summary?.top_impersonated ?? []).length === 0 ? (
               <EmptyState title="No impersonation recorded" />
             ) : (
@@ -412,9 +427,11 @@ export default function DashboardPage() {
 
       {/* --- the record everything is checked against --- */}
       <section className="mt-12">
-        <SectionTitle hint="Issuers publish into an append-only record. Nothing can be altered or removed after the fact without its fingerprint changing.">
-          The record behind every answer
-        </SectionTitle>
+        <Reveal>
+          <SectionTitle hint="Issuers publish into an append-only record. Nothing can be altered or removed after the fact without its fingerprint changing.">
+            The record behind every answer
+          </SectionTitle>
+        </Reveal>
         <Card accent="border-l-ink" className="p-5">
           <div className="grid gap-5 sm:grid-cols-3">
             <div>

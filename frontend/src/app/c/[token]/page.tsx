@@ -1,4 +1,5 @@
 import { getCertificate } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 
 // Full animated Merkle-proof verification (client-side, via the TS
 // verify_inclusion mirror) lands in Epic 7 alongside the log explorer —
@@ -30,7 +31,7 @@ export default async function CertificatePage({
 
   return (
     <div className="mx-auto max-w-xl px-6 py-16">
-      <div className="rounded border-l-4 border-verified bg-card p-6 shadow-sm">
+      <Reveal className="rounded border-l-4 border-verified bg-card p-6 shadow-sm">
         <h1 className="font-display text-xl font-bold text-ink">
           {cert.verdict === "VERIFIED_NOTICE" ? "⚠️ Verified — with notice" : "✅ Verified"}
         </h1>
@@ -86,7 +87,7 @@ export default async function CertificatePage({
             </div>
           </div>
         )}
-      </div>
+      </Reveal>
     </div>
   );
 }

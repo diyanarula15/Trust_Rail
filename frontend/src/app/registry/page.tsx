@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BookMarked, KeyRound, Search } from "lucide-react";
 import { getEntity, listEntities, type EntityDetailOut, type EntityOut } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 import { Badge, Card, EmptyState, Page, PageHeader, SectionTitle } from "@/components/ui";
 
 const KIND_LABEL: Record<string, string> = {
@@ -39,13 +40,15 @@ export default function RegistryPage() {
 
   return (
     <Page wide>
-      <PageHeader
-        eyebrow="Who we recognise"
-        title="Registry"
-        lead="The companies, exchanges, brokers and funds this system can verify against, along with the web addresses and SMS sender IDs that genuinely belong to them, and the current state of every signing key they hold. If an issuer is not on this list, nothing they send can be confirmed."
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="Who we recognise"
+          title="Registry"
+          lead="The companies, exchanges, brokers and funds this system can verify against, along with the web addresses and SMS sender IDs that genuinely belong to them, and the current state of every signing key they hold. If an issuer is not on this list, nothing they send can be confirmed."
+        />
+      </Reveal>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <Reveal delay={80} className="grid gap-6 lg:grid-cols-[1fr_1fr]">
         <div>
           <div className="mb-3 flex items-center gap-2 rounded border border-hairline bg-card px-3 py-2">
             <Search className="h-4 w-4 shrink-0 text-info" aria-hidden />
@@ -195,7 +198,7 @@ export default function RegistryPage() {
             </Card>
           )}
         </div>
-      </div>
+      </Reveal>
     </Page>
   );
 }

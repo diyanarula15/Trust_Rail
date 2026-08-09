@@ -20,6 +20,7 @@ import {
   sendGuardTestMessage,
   type CircleStatusOut,
 } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 import { Badge, Card, EmptyState, Page, PageHeader, SectionTitle } from "@/components/ui";
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -288,17 +289,19 @@ export default function TrustCircleStatusPage() {
 
   return (
     <Page>
-      <PageHeader
-        eyebrow="Family protection"
-        title="Trust Circle status"
-        actions={
-          <Badge tone={isActive ? "verified" : status.status === "pending" ? "notice" : "fake"}>
-            {status.status}
-          </Badge>
-        }
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="Family protection"
+          title="Trust Circle status"
+          actions={
+            <Badge tone={isActive ? "verified" : status.status === "pending" ? "notice" : "fake"}>
+              {status.status}
+            </Badge>
+          }
+        />
+      </Reveal>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <Reveal delay={80} className="grid gap-6 sm:grid-cols-2">
         <Card className="p-5">
           <SectionTitle>Linked identity</SectionTitle>
           <div className="text-sm text-info">
@@ -318,15 +321,15 @@ export default function TrustCircleStatusPage() {
             </div>
           )}
         </Card>
-      </div>
+      </Reveal>
 
       {isActive && (
-        <div className="mt-6">
+        <Reveal delay={140} className="mt-6">
           <AutoGuardPanel token={token} status={status} onChanged={refresh} />
-        </div>
+        </Reveal>
       )}
 
-      <div className="mt-8">
+      <Reveal delay={200} className="mt-8">
         <SectionTitle hint="Most recent first. Only what's needed to act on — never the message itself.">
           Recent alerts
         </SectionTitle>
@@ -352,7 +355,7 @@ export default function TrustCircleStatusPage() {
             ))}
           </div>
         )}
-      </div>
+      </Reveal>
 
       {isActive && (
         <div className="mt-8">

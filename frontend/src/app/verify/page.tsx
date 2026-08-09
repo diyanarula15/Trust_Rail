@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Composer } from "@/components/Composer";
 import { LiveCheck } from "@/components/LiveCheck";
+import { Reveal } from "@/components/Reveal";
 import { TryThese } from "@/components/TryThese";
 import { VerdictCard } from "@/components/VerdictCard";
 import type { CardPayload, VerifyInput } from "@/lib/api";
@@ -73,7 +74,7 @@ export default function VerifyPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-3xl flex-col px-6 py-10 sm:py-14">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-hairline pb-6">
+      <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-hairline pb-6">
         <div className="min-w-0">
           <div className="font-mono text-xs uppercase tracking-[0.18em] text-seal">
             Check anything you were sent
@@ -92,19 +93,19 @@ export default function VerifyPage() {
         >
           {copy.toggleLabel}
         </button>
-      </div>
+      </Reveal>
 
       {/* Without this, testing a real-world message reads as a bug: a genuine
           notice from a real company comes back "cannot confirm" simply because
           that company isn't in this prototype's fictional registry. */}
-      <div className="mt-4 rounded border-l-2 border-seal bg-card px-4 py-3 text-sm leading-relaxed text-info">
+      <Reveal delay={80} className="mt-4 rounded border-l-2 border-seal bg-card px-4 py-3 text-sm leading-relaxed text-info">
         <span className="font-medium text-ink">Testing with a real message?</span>{" "}
         It will come back as <span className="text-ink">cannot confirm</span>, and
         that is the correct answer. This prototype&rsquo;s registry holds 12
         made-up demo companies, so nothing a real company published is in it to
         match against. Only the demo issuers can verify. Scam detection works on
         any message, real or not.
-      </div>
+      </Reveal>
 
       <div className="mt-6 flex-1 space-y-4">
         {isEmpty && <TryThese onRun={handleSubmit} busy={live.busy} />}

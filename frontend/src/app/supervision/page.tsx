@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { Radio } from "lucide-react";
 import { getTelemetrySummary, type TelemetrySummary } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 import { Card, EmptyState, Page, PageHeader, SectionTitle, Stat, TableWrap, Th } from "@/components/ui";
 
 const GEO_URL = "/india_states.json";
@@ -79,28 +80,30 @@ export default function SupervisionPage() {
 
   return (
     <Page wide>
-      <PageHeader
-        eyebrow="Regulator view"
-        title="Supervision"
-        lead="Where impersonation attempts are landing across the country, which brands are being imitated most, and which scam campaigns are running right now. Built from real verifications as they happen."
-        actions={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-3 py-1.5 text-xs text-info">
-            <Radio className="h-3.5 w-3.5 text-verified" aria-hidden />
-            live · refreshes every 10s
-          </span>
-        }
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="Regulator view"
+          title="Supervision"
+          lead="Where impersonation attempts are landing across the country, which brands are being imitated most, and which scam campaigns are running right now. Built from real verifications as they happen."
+          actions={
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-3 py-1.5 text-xs text-info">
+              <Radio className="h-3.5 w-3.5 text-verified" aria-hidden />
+              live · refreshes every 10s
+            </span>
+          }
+        />
+      </Reveal>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <Reveal delay={80} className="grid gap-3 sm:grid-cols-3">
         <Stat value={total} label="checks in the last 14 days" />
         <Stat value={`${pctFlagged}%`} label="unconfirmed or fake" tone="text-fake" />
         <Stat
           value={topVerdict ? VERDICT_LABEL[topVerdict] ?? topVerdict : "—"}
           label="most common answer"
         />
-      </div>
+      </Reveal>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+      <Reveal delay={140} className="mt-6 grid gap-5 lg:grid-cols-2">
         <Card className="p-4">
           <SectionTitle hint="Darker means more messages flagged as unconfirmed or fake were checked from that state.">
             Where flags are landing
@@ -178,9 +181,9 @@ export default function SupervisionPage() {
             </ResponsiveContainer>
           )}
         </Card>
-      </div>
+      </Reveal>
 
-      <div className="mt-6">
+      <Reveal delay={0} className="mt-6">
         <SectionTitle hint="Groups of messages that share a fake domain, image or phrase — the same operation, seen repeatedly.">
           Active scam campaigns
         </SectionTitle>
@@ -215,7 +218,7 @@ export default function SupervisionPage() {
             </table>
           </TableWrap>
         )}
-      </div>
+      </Reveal>
     </Page>
   );
 }

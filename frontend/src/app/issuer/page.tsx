@@ -14,6 +14,7 @@ import {
   type EntityOut,
   type KeyOut,
 } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 import { Badge, Card, EmptyState, Page, PageHeader, TableWrap, Th } from "@/components/ui";
 
 const CHANNELS = ["filing", "sms", "email", "video", "image", "pdf", "social"];
@@ -125,22 +126,25 @@ export default function IssuerPage() {
 
   return (
     <Page wide>
-      <PageHeader
-        eyebrow="How a company publishes"
-        title="Issuer console"
-        lead="Nothing reaches the public record on one person's say-so. One person drafts and signs, a second approves, and only then is it published — and the record's fingerprint visibly changes at that moment."
-        actions={
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            disabled={!entityId}
-            className="inline-flex items-center gap-1.5 rounded bg-ink px-4 py-2 text-sm font-semibold text-paper hover:opacity-90 disabled:opacity-40"
-          >
-            <Plus className="h-4 w-4" /> New communication
-          </button>
-        }
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="How a company publishes"
+          title="Issuer console"
+          lead="Nothing reaches the public record on one person's say-so. One person drafts and signs, a second approves, and only then is it published — and the record's fingerprint visibly changes at that moment."
+          actions={
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              disabled={!entityId}
+              className="inline-flex items-center gap-1.5 rounded bg-ink px-4 py-2 text-sm font-semibold text-paper hover:opacity-90 disabled:opacity-40"
+            >
+              <Plus className="h-4 w-4" /> New communication
+            </button>
+          }
+        />
+      </Reveal>
 
+      <Reveal delay={80}>
       <Card className="mb-5 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
@@ -192,6 +196,7 @@ export default function IssuerPage() {
           </div>
         )}
       </Card>
+      </Reveal>
 
       {rootDelta && (
         <Card accent="border-l-verified" className="mb-4 p-4">
@@ -224,6 +229,7 @@ export default function IssuerPage() {
         </Card>
       )}
 
+      <Reveal delay={160}>
       {comms.length === 0 ? (
         <EmptyState
           title="Nothing published by this entity yet"
@@ -312,6 +318,7 @@ export default function IssuerPage() {
           </table>
         </TableWrap>
       )}
+      </Reveal>
 
       {drawerOpen && (
         <div

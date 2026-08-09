@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { HeartHandshake, ShieldAlert } from "lucide-react";
 import { pairCircleComplete } from "@/lib/api";
+import { Reveal } from "@/components/Reveal";
 import { Card, EmptyState, Page, PageHeader, SectionTitle } from "@/components/ui";
 
 // Trust Circle links an elder's WhatsApp/Telegram/email identity — the one
@@ -44,13 +45,15 @@ export default function TrustCirclePage() {
 
   return (
     <Page>
-      <PageHeader
-        eyebrow="Family protection"
-        title="Trust Circle"
-        lead="Link up with a family member's TrustRail bot so you're notified the moment something they receive is flagged as likely fake or unconfirmed — no need to wait for them to ask."
-      />
+      <Reveal>
+        <PageHeader
+          eyebrow="Family protection"
+          title="Trust Circle"
+          lead="Link up with a family member's TrustRail bot so you're notified the moment something they receive is flagged as likely fake or unconfirmed — no need to wait for them to ask."
+        />
+      </Reveal>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <Reveal delay={80} className="grid gap-6 sm:grid-cols-2">
         <Card className="p-5">
           <SectionTitle hint="They only need to do this once.">
             Step 1 — they get a code
@@ -77,9 +80,9 @@ export default function TrustCirclePage() {
             from your own chat with the bot.
           </p>
         </Card>
-      </div>
+      </Reveal>
 
-      <div className="mt-8">
+      <Reveal delay={140} className="mt-8">
         {circleToken ? (
           <Card accent="border-l-verified" className="p-6">
             <div className="flex items-start gap-3">
@@ -150,14 +153,14 @@ export default function TrustCirclePage() {
             </form>
           </Card>
         )}
-      </div>
+      </Reveal>
 
-      <div className="mt-10">
+      <Reveal delay={200} className="mt-10">
         <EmptyState
           title="What a guardian can see"
           hint="Just enough to act: which platform flagged something, the plain-language verdict, and when. Never the message itself, never balances, never anything else they've sent."
         />
-      </div>
+      </Reveal>
     </Page>
   );
 }
