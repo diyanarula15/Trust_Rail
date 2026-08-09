@@ -35,6 +35,12 @@ const VERDICT_LABEL: Record<string, string> = {
   INFORMATIONAL: "No official claim",
 };
 
+// Verdicts worth a regulator's attention. "most common concern" is scoped to
+// these so the KPI surfaces risk signal, not the base rate of benign,
+// no-claim traffic (which dominates totals_by_verdict and would otherwise
+// win every time).
+const NOTABLE_VERDICTS = ["LIKELY_FAKE", "OFFICIAL_CLAIM_UNVERIFIED", "VERIFIED_NOTICE"];
+
 function shade(count: number, max: number): string {
   if (count === 0) return "#F7F5F0";
   const t = max > 0 ? count / max : 0;
@@ -66,7 +72,9 @@ export default function SupervisionPage() {
   const total = Object.values(totals).reduce((a, b) => a + b, 0);
   const flagged = (totals["LIKELY_FAKE"] ?? 0) + (totals["OFFICIAL_CLAIM_UNVERIFIED"] ?? 0);
   const pctFlagged = total > 0 ? Math.round((flagged / total) * 100) : 0;
-  const topVerdict = Object.entries(totals).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const topConcern = Object.entries(totals)
+    .filter(([verdict]) => NOTABLE_VERDICTS.includes(verdict))
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
 
   const byNameCount = useMemo(() => {
     const map: Record<string, number> = {};
@@ -98,8 +106,8 @@ export default function SupervisionPage() {
         <Stat value={total} label="checks in the last 14 days" />
         <Stat value={`${pctFlagged}%`} label="unconfirmed or fake" tone="text-fake" />
         <Stat
-          value={topVerdict ? VERDICT_LABEL[topVerdict] ?? topVerdict : "N/A"}
-          label="most common answer"
+          value={topConcern ? VERDICT_LABEL[topConcern] ?? topConcern : "None flagged"}
+          label="most common concern"
         />
       </Reveal>
 

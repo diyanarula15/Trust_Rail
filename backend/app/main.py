@@ -27,6 +27,11 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.base_url],
+        # Next.js dev falls through to 3001, 3002, ... whenever 3000 is
+        # already taken (stale process, another project). Accept any local
+        # dev port so CORS doesn't break just because the frontend landed
+        # on a different one than settings.base_url assumes.
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
         allow_methods=["*"],
         allow_headers=["*"],
     )
