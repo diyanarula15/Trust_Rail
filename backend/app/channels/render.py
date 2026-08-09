@@ -148,10 +148,10 @@ class RenderContext(BaseModel):
 
 
 class _Defaulting(dict):
-    """Missing placeholders render as an em dash rather than raising."""
+    """Missing placeholders render as "N/A" rather than raising."""
 
     def __missing__(self, key: str) -> str:
-        return "—"
+        return "N/A"
 
 
 def _reason_string(strings: dict[str, Any], code: str) -> str:

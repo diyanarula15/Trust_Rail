@@ -5,15 +5,15 @@
       "body": "Issued by {entity} (SEBI reg {reg}). Published {date} via {channel}. Tamper-evident log entry #{seq}."
     },
     "verified_notice": {
-      "title": "⚠️ Verified — with notice",
+      "title": "⚠️ Verified, with notice",
       "body": "Validly signed by {entity} on {date}, but the signing key was revoked on {revoked_date}. Confirm on the entity's official channel before acting."
     },
     "official_claim_unverified": {
-      "title": "⚠️ Caution — cannot be confirmed",
+      "title": "⚠️ Caution: cannot be confirmed",
       "body": "This claims to be from {claimed}, but no registered communication matches. Treat it as unsafe."
     },
     "likely_fake": {
-      "title": "🚨 High risk — likely fake",
+      "title": "🚨 High risk: likely fake",
       "body": "{top_reason}. Do not act on it. Never pay or share OTPs based on this message."
     },
     "informational": {
@@ -93,7 +93,7 @@
       "NO_CLAIM": "It does not present itself as an official market communication and shows no fraud signals, so there is nothing to confirm or deny."
     },
     "escalated_by": "Escalated by:",
-    "strict_note": "We are deliberately strict: any one of these is enough to call something a scam. We are never strict the other way — failing to find a match only ever means \"cannot confirm\", never \"fake\"."
+    "strict_note": "We are deliberately strict: any one of these is enough to call something a scam. We are never strict the other way: failing to find a match only ever means \"cannot confirm\", never \"fake\"."
   },
   "live": {
     "stages": {
@@ -205,7 +205,7 @@
     "PDQ_MATCH": "Content matches a registered communication's image (PDQ).",
     "SIMHASH_MATCH": "Content matches a registered communication's text.",
     "VIDEO_MATCH": "Content matches a registered communication's video.",
-    "PHASH_NEAR": "Content is visually close to a registered communication but not an exact match — possible tampered copy.",
+    "PHASH_NEAR": "Content is visually close to a registered communication but not an exact match: possible tampered copy.",
     "COMM_WITHDRAWN": "The matching communication was withdrawn by its issuer.",
     "ENTITY_CLAIM_STRONG": "This content names a specific registered entity.",
     "ENTITY_CLAIM_WEAK": "This content uses official-sounding language without naming a specific entity.",
@@ -227,6 +227,6 @@
     "pair_invalid_code": "That code isn't valid or has expired. Send /circle again for a fresh one.",
     "pair_link_confirmed": "You're now linked as a Trust Circle guardian. If something risky reaches them, you'll be alerted here.",
     "alert_subject": "TrustRail Trust Circle alert",
-    "alert_intro": "This was flagged and blocked automatically — no action needed from you."
+    "alert_intro": "This was flagged and blocked automatically, no action needed from you."
   }
 }

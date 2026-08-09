@@ -42,7 +42,7 @@ def ingest_status(db: Session = Depends(get_db)) -> dict:
         {
             "name": name,
             "adapter": adapter,
-            "origin": getattr(source, "url", None) or str(getattr(source, "path", "—")),
+            "origin": getattr(source, "url", None) or str(getattr(source, "path", "N/A")),
             "live": hasattr(source, "url"),
             "ingested": by_source.get(name, 0),
         }

@@ -122,7 +122,7 @@ def _handle_one(
     if media_id:
         media = whatsapp.download_media(media_id, sim_local_path)
         if media is None:
-            whatsapp.send_text(sender, "Sorry — that attachment could not be downloaded.")
+            whatsapp.send_text(sender, "Sorry, that attachment could not be downloaded.")
             return
         data, _mime = media
         try:

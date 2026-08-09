@@ -98,7 +98,7 @@ export default function SupervisionPage() {
         <Stat value={total} label="checks in the last 14 days" />
         <Stat value={`${pctFlagged}%`} label="unconfirmed or fake" tone="text-fake" />
         <Stat
-          value={topVerdict ? VERDICT_LABEL[topVerdict] ?? topVerdict : "—"}
+          value={topVerdict ? VERDICT_LABEL[topVerdict] ?? topVerdict : "N/A"}
           label="most common answer"
         />
       </Reveal>
@@ -125,7 +125,7 @@ export default function SupervisionPage() {
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
-                        onMouseEnter={() => setHover(`${name} — ${count} flagged`)}
+                        onMouseEnter={() => setHover(`${name}: ${count} flagged`)}
                         onMouseLeave={() => setHover(null)}
                         style={{
                           default: {
@@ -184,7 +184,7 @@ export default function SupervisionPage() {
       </Reveal>
 
       <Reveal delay={0} className="mt-6">
-        <SectionTitle hint="Groups of messages that share a fake domain, image or phrase — the same operation, seen repeatedly.">
+        <SectionTitle hint="Groups of messages that share a fake domain, image or phrase: the same operation, seen repeatedly.">
           Active scam campaigns
         </SectionTitle>
         {(summary?.campaigns ?? []).length === 0 ? (

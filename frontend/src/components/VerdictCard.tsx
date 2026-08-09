@@ -215,7 +215,7 @@ export function VerdictCard({
                   {card.reasons.map((code, i) => (
                     <li key={code} className="text-xs text-info">
                       <span className="font-mono text-ink">{code}</span>
-                      {card.reason_strings[i] ? ` — ${card.reason_strings[i]}` : ""}
+                      {card.reason_strings[i] ? `: ${card.reason_strings[i]}` : ""}
                     </li>
                   ))}
                 </ul>

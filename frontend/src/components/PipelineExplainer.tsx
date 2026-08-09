@@ -15,14 +15,14 @@ const STAGES = [
     name: "Read it",
     plain: "Open the file or message and take its fingerprints.",
     detail:
-      "A byte fingerprint, plus a perceptual one that describes what a picture looks like or what a message says — not how its bytes happen to be arranged.",
+      "A byte fingerprint, plus a perceptual one that describes what a picture looks like or what a message says, not how its bytes happen to be arranged.",
   },
   {
     Icon: KeyRound,
     name: "Look for a signature",
     plain: "Check whether a registered issuer signed it.",
     detail:
-      "Almost nothing forwarded through chat still carries one — forwarding strips it. That is exactly why the next step has to exist.",
+      "Almost nothing forwarded through chat still carries one: forwarding strips it. That is exactly why the next step has to exist.",
   },
   {
     Icon: Library,
@@ -83,7 +83,7 @@ export function PipelineExplainer() {
         <span className="font-medium text-ink">The rule that ties it together:</span> only the
         first two steps can ever produce &ldquo;genuine&rdquo;. Naming a real company and looking
         official prove nothing on their own, so a message that does both but matches nothing
-        published gets &ldquo;we cannot confirm this&rdquo; — never a green tick.
+        published gets &ldquo;we cannot confirm this&rdquo;, never a green tick.
       </p>
     </div>
   );

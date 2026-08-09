@@ -188,7 +188,7 @@ export default function RegistryPage() {
                       {k.revoked_at && (
                         <div className="mt-1 rounded bg-fake/5 px-2 py-1 font-mono text-xs text-fake">
                           revoked {k.revoked_at.slice(0, 10)}
-                          {k.revocation_reason ? ` — ${k.revocation_reason}` : ""}
+                          {k.revocation_reason ? `: ${k.revocation_reason}` : ""}
                         </div>
                       )}
                     </div>

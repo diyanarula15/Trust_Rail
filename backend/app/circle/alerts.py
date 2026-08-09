@@ -50,7 +50,7 @@ def _alert_text(card: dict) -> str:
     headline = card.get("plain_headline") or card.get("headline") or "Risky content flagged"
     reasons = card.get("plain_reason_strings") or card.get("reason_strings") or []
     intro = strings.get(
-        "alert_intro", "This was flagged and blocked automatically — no action needed from you."
+        "alert_intro", "This was flagged and blocked automatically, no action needed from you."
     )
     lines = [strings.get("alert_subject", "TrustRail Trust Circle alert"), "", headline]
     if reasons:

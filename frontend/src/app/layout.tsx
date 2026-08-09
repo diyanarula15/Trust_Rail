@@ -35,7 +35,7 @@ export default function RootLayout({
         <footer className="mt-16 border-t border-hairline bg-card">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-6 text-sm text-info">
             <p>
-              <span className="font-display font-semibold text-ink">TrustRail</span> — hackathon
+              <span className="font-display font-semibold text-ink">TrustRail</span>: hackathon
               prototype, not affiliated with SEBI.
             </p>
             <p className="text-xs">

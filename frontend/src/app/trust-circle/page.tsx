@@ -49,18 +49,18 @@ export default function TrustCirclePage() {
         <PageHeader
           eyebrow="Family protection"
           title="Trust Circle"
-          lead="Link up with a family member's TrustRail bot so you're notified the moment something they receive is flagged as likely fake or unconfirmed — no need to wait for them to ask."
+          lead="Link up with a family member's TrustRail bot so you're notified the moment something they receive is flagged as likely fake or unconfirmed, no need to wait for them to ask."
         />
       </Reveal>
 
       <Reveal delay={80} className="grid gap-6 sm:grid-cols-2">
         <Card className="p-5">
           <SectionTitle hint="They only need to do this once.">
-            Step 1 — they get a code
+            Step 1: they get a code
           </SectionTitle>
           <p className="text-sm leading-relaxed text-info">
             Ask them to send <span className="rounded bg-paper px-1.5 py-0.5 font-mono text-ink">/circle</span>{" "}
-            to the TrustRail bot on WhatsApp, Telegram, or by email — whichever
+            to the TrustRail bot on WhatsApp, Telegram, or by email, whichever
             one they already use to check suspicious messages. It replies with
             a 6-digit code good for 15 minutes.
           </p>
@@ -68,11 +68,11 @@ export default function TrustCirclePage() {
 
         <Card className="p-5">
           <SectionTitle hint="Do this part yourself, from your own device.">
-            Step 2 — you enter it below
+            Step 2: you enter it below
           </SectionTitle>
           <p className="text-sm leading-relaxed text-info">
             Enter the code plus your name and email. From then on, if
-            something risky reaches them, you&apos;ll get an alert here — and
+            something risky reaches them, you&apos;ll get an alert here, and
             directly on WhatsApp or Telegram too, if you also reply with{" "}
             <span className="rounded bg-paper px-1.5 py-0.5 font-mono text-ink">
               /circle &lt;code&gt;
@@ -90,7 +90,7 @@ export default function TrustCirclePage() {
               <div>
                 <h2 className="font-display text-lg font-bold text-ink">You&apos;re linked</h2>
                 <p className="mt-1.5 text-sm leading-relaxed text-info">
-                  Bookmark this private link — it&apos;s the only way to check
+                  Bookmark this private link: it&apos;s the only way to check
                   status or revoke this later, since nothing here requires an
                   account.
                 </p>

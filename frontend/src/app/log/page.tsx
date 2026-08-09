@@ -210,7 +210,7 @@ export default function LogPage() {
                   state={proofState}
                   labels={{
                     checking: "Working through the hashes…",
-                    valid: "It checks out — this entry is provably in the record",
+                    valid: "It checks out: this entry is provably in the record",
                     invalid: "Proof failed to verify",
                   }}
                 />

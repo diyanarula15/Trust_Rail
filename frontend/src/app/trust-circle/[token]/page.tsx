@@ -106,7 +106,7 @@ function AutoGuardPanel({
             <h2 className="font-display text-lg font-bold text-ink">Auto-Guard</h2>
             <p className="mt-1.5 text-sm leading-relaxed text-info">
               Turn this on and every text message that arrives on their phone gets checked
-              automatically — before they ever open it. No forwarding, nothing for them to do.
+              automatically, before they ever open it. No forwarding, nothing for them to do.
               If something dangerous gets through, you&apos;re alerted here the moment it does.
             </p>
             <button
@@ -197,7 +197,7 @@ function AutoGuardPanel({
         </div>
         <p className="mt-1 text-sm leading-relaxed text-info">
           This sends a real message to the address above, through the exact same route a
-          phone would use — watch it land in your alerts below.
+          phone would use: watch it land in your alerts below.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {TEST_MESSAGES.map((m) => (
@@ -312,8 +312,8 @@ export default function TrustCircleStatusPage() {
 
         <Card className="p-5">
           <SectionTitle>Guardian</SectionTitle>
-          <div className="text-sm text-ink">{status.guardian_name ?? "—"}</div>
-          <div className="mt-1 font-mono text-xs text-info">{status.guardian_email ?? "—"}</div>
+          <div className="text-sm text-ink">{status.guardian_name ?? "N/A"}</div>
+          <div className="mt-1 font-mono text-xs text-info">{status.guardian_email ?? "N/A"}</div>
           {status.guardian_channel && (
             <div className="mt-2 text-xs text-info">
               Also linked on {CHANNEL_LABEL[status.guardian_channel] ?? status.guardian_channel} for
@@ -330,7 +330,7 @@ export default function TrustCircleStatusPage() {
       )}
 
       <Reveal delay={200} className="mt-8">
-        <SectionTitle hint="Most recent first. Only what's needed to act on — never the message itself.">
+        <SectionTitle hint="Most recent first. Only what's needed to act on: never the message itself.">
           Recent alerts
         </SectionTitle>
         {status.alerts.length === 0 ? (

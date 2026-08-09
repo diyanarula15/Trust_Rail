@@ -67,10 +67,8 @@ export default function ChannelsPage() {
         </h1>
         <p className="mt-2.5 max-w-2xl text-[15px] leading-relaxed text-info">
           The same verification pipeline as Verify, run through each platform&rsquo;s real
-          reply formatting &mdash; this is the literal text a Telegram, WhatsApp or SMS bot
-          would send. Nothing here is actually sent anywhere; see docs/SETUP_TELEGRAM.md,
-          docs/SETUP_WHATSAPP.md and docs/SETUP_SMS.md for what &ldquo;going live&rdquo;
-          would take. SMS also has a second, automatic mode &mdash; see{" "}
+          reply formatting: this is the literal text a Telegram, WhatsApp or SMS bot
+          would send. SMS also has a second, automatic mode, see{" "}
           <a href="/trust-circle" className="underline decoration-hairline decoration-2 underline-offset-2 hover:decoration-seal">
             Trust Circle
           </a>.

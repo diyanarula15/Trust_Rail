@@ -40,7 +40,7 @@ const FEATURES = [
     eyebrow: "For investors",
     title: "Forward it. Get a straight answer.",
     body:
-      "Drop in a screenshot, a PDF, an SMS, a video or a link. In under a second you are told whether a registered company actually published it — in plain words, with the reason spelled out and the working available if you want it.",
+      "Drop in a screenshot, a PDF, an SMS, a video or a link. In under a second you are told whether a registered company actually published it, in plain words, with the reason spelled out and the working available if you want it.",
     points: [
       "Works on anything that lands in a chat",
       "Answers in plain language, not jargon",
@@ -55,7 +55,7 @@ const FEATURES = [
     eyebrow: "The hard part",
     title: "It still recognises a forward after the platform mangles it.",
     body:
-      "Chat apps re-save every photo they carry. That rewrites the file completely — a byte-for-byte check would miss it every time. TrustRail compares what the picture looks like and what the message says, so a forwarded copy still matches.",
+      "Chat apps re-save every photo they carry. That rewrites the file completely, so a byte-for-byte check would miss it every time. TrustRail compares what the picture looks like and what the message says, so a forwarded copy still matches.",
     points: [
       "Survives re-compression, resizing and screenshots",
       "Ignores emoji and invisible characters injected into text",
@@ -117,7 +117,7 @@ const FEATURES = [
     eyebrow: "When it is a scam",
     title: "Strict about fraud. Never strict about doubt.",
     body:
-      "Any real fraud signal — an imitation web address, a look-alike company name, a demand for payment, a known campaign — is enough to call something a scam. But failing to find a match never is: that only ever means we cannot confirm it.",
+      "Any real fraud signal (an imitation web address, a look-alike company name, a demand for payment, a known campaign) is enough to call something a scam. But failing to find a match never is: that only ever means we cannot confirm it.",
     points: [
       "One fraud signal is enough to escalate",
       "An unknown issuer is never called a fraudster",
@@ -216,8 +216,8 @@ export default async function LandingPage() {
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-info">
             Most tools look at a message and estimate how suspicious it seems. That is a guess,
-            and guesses cannot be audited. TrustRail asks something answerable instead — whether
-            the thing in front of you matches what a registered company actually published — and
+            and guesses cannot be audited. TrustRail asks something answerable instead: whether
+            the thing in front of you matches what a registered company actually published, and
             refuses to say &ldquo;genuine&rdquo; without either a valid signature or a match
             against that record.
           </p>
@@ -291,19 +291,19 @@ export default async function LandingPage() {
                 <span className="tr-eyebrow">The important part</span>
               </div>
               <h3 className="mt-3 font-display text-2xl font-bold leading-[1.12] tracking-tight text-ink">
-                Auto-Guard scans every message that arrives &mdash; before anyone clicks
+                Auto-Guard scans every message that arrives, before anyone clicks
               </h3>
               <p className="mt-4 max-w-prose text-[17px] leading-relaxed text-info">
                 Once it&rsquo;s turned on, nothing is manually forwarded to a bot and nothing
                 is left to notice. Every text that reaches their phone is checked the instant
                 it arrives, using the identical pipeline every other page on this site uses.
-                If one turns out to be dangerous, you&rsquo;re alerted here &mdash; and they
+                If one turns out to be dangerous, you&rsquo;re alerted here, and they
                 are never left to make that call alone.
               </p>
               <ul className="mt-6 space-y-2.5">
                 {[
                   "Works via a free SMS-forwarder app already on the Play Store, or a dedicated number",
-                  "No action from them, ever — the scanning is invisible",
+                  "No action from them, ever: the scanning is invisible",
                   "Ordinary messages never generate an alert; only real fraud signals do",
                 ].map((p) => (
                   <li key={p} className="flex items-start gap-2.5 text-[15px] text-ink">
@@ -326,7 +326,7 @@ export default async function LandingPage() {
             <p className="text-sm leading-relaxed text-info">
               Prefer the reactive version? They can also just forward anything suspicious
               straight to the bot on WhatsApp, Telegram, SMS or email and get an answer back
-              in seconds &mdash; the same way anyone else uses{" "}
+              in seconds, the same way anyone else uses{" "}
               <a href="/channels" className="font-medium text-ink underline decoration-hairline decoration-2 underline-offset-2 hover:decoration-seal">
                 Channels
               </a>
@@ -410,7 +410,7 @@ export default async function LandingPage() {
             Try it on something suspicious.
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-info">
-            There are ready-made examples on the verify page — a real scam SMS, an ordinary news
+            There are ready-made examples on the verify page: a real scam SMS, an ordinary news
             line, and a photo forwarded exactly the way a chat app would mangle it.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

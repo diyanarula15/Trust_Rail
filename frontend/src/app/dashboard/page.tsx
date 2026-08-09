@@ -231,7 +231,7 @@ export default function DashboardPage() {
               did a registered company actually publish this?
             </span>{" "}
             Issuers sign what they put out, it lands in a record that cannot be rewritten, and
-            anyone can check a forwarded copy against it — even after the platform it travelled
+            anyone can check a forwarded copy against it, even after the platform it travelled
             through stripped every byte of metadata and re-saved the file.
           </p>
           <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-info">
@@ -245,7 +245,7 @@ export default function DashboardPage() {
       {/* --- how content gets in --- */}
       <section className="mt-12">
         <Reveal>
-          <SectionTitle hint="Verification is only possible because something authoritative was published first. These are the ways that happens — two of them are infrastructure that already exists, so issuers are not asked to do anything new.">
+          <SectionTitle hint="Verification is only possible because something authoritative was published first. These are the ways that happens: two of them are infrastructure that already exists, so issuers are not asked to do anything new.">
             Where the record comes from
           </SectionTitle>
         </Reveal>
@@ -357,7 +357,7 @@ export default function DashboardPage() {
 
         <div>
           <Reveal>
-            <SectionTitle hint="Groups of messages sharing a fake address, image or phrase — one operation seen repeatedly.">
+            <SectionTitle hint="Groups of messages sharing a fake address, image or phrase: one operation seen repeatedly.">
               Scam campaigns running now
             </SectionTitle>
           </Reveal>

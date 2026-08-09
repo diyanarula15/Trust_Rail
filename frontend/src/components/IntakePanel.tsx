@@ -26,7 +26,7 @@ const SOURCE_META: Record<
     Icon: MessageSquare,
     label: "DLT SMS registry",
     what:
-      "Every commercial SMS sender header and message template is pre-registered under TRAI's DLT rules. That registry is the authoritative wording — we sign it so a received SMS can be checked against it.",
+      "Every commercial SMS sender header and message template is pre-registered under TRAI's DLT rules. That registry is the authoritative wording, we sign it so a received SMS can be checked against it.",
     accent: "border-l-info",
   },
   issuer_console: {
@@ -57,7 +57,7 @@ export function IntakePanel({
       setResult(
         r.data.published > 0
           ? `Published ${r.data.published} new communication${r.data.published === 1 ? "" : "s"}.`
-          : "Nothing new — everything in the feeds is already published."
+          : "Nothing new: everything in the feeds is already published."
       );
       onRefresh();
     } else {
@@ -137,7 +137,7 @@ export function IntakePanel({
         <p className="flex-1 text-xs leading-relaxed text-info">
           {result ?? (
             <>
-              Safe to run repeatedly — content that is already published is recognised and skipped.
+              Safe to run repeatedly: content that is already published is recognised and skipped.
               Point <span className="font-mono text-ink">EXCHANGE_FEED_URL</span> or{" "}
               <span className="font-mono text-ink">DLT_SMS_FEED_URL</span> at a real endpoint and
               the same code polls that instead.

@@ -33,7 +33,7 @@ export default async function CertificatePage({
     <div className="mx-auto max-w-xl px-6 py-16">
       <Reveal className="rounded border-l-4 border-verified bg-card p-6 shadow-sm">
         <h1 className="font-display text-xl font-bold text-ink">
-          {cert.verdict === "VERIFIED_NOTICE" ? "⚠️ Verified — with notice" : "✅ Verified"}
+          {cert.verdict === "VERIFIED_NOTICE" ? "⚠️ Verified, with notice" : "✅ Verified"}
         </h1>
 
         {cert.entity && (
@@ -49,7 +49,7 @@ export default async function CertificatePage({
           <div className="text-ink">{cert.communication.title}</div>
           <div className="font-mono text-xs text-info">
             {cert.communication.channel} · published{" "}
-            {cert.communication.published_at?.slice(0, 10) ?? "—"} · log #
+            {cert.communication.published_at?.slice(0, 10) ?? "N/A"} · log #
             {cert.communication.log_seq}
           </div>
         </div>
@@ -82,8 +82,8 @@ export default async function CertificatePage({
               {cert.inclusion_proof.root_hash}
             </div>
             <div className="mt-1 text-xs text-info">
-              leaf {cert.inclusion_proof.leaf_index} of {cert.inclusion_proof.tree_size} —
-              inclusion proof verifies live in the log explorer (Epic 7).
+              leaf {cert.inclusion_proof.leaf_index} of {cert.inclusion_proof.tree_size}.
+              Inclusion proof verifies live in the log explorer (Epic 7).
             </div>
           </div>
         )}

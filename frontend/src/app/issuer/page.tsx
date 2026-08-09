@@ -130,7 +130,7 @@ export default function IssuerPage() {
         <PageHeader
           eyebrow="How a company publishes"
           title="Issuer console"
-          lead="Nothing reaches the public record on one person's say-so. One person drafts and signs, a second approves, and only then is it published — and the record's fingerprint visibly changes at that moment."
+          lead="Nothing reaches the public record on one person's say-so. One person drafts and signs, a second approves, and only then is it published, and the record's fingerprint visibly changes at that moment."
           actions={
             <button
               type="button"
@@ -172,7 +172,7 @@ export default function IssuerPage() {
             >
               {personaOptions.map((k) => (
                 <option key={k.id} value={k.id}>
-                  {k.label} — {k.role}, {k.status}
+                  {k.label} ({k.role}, {k.status})
                 </option>
               ))}
             </select>

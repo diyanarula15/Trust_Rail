@@ -307,7 +307,7 @@ export function MockAutoGuard() {
 
       <div className="my-2 flex items-center gap-2 pl-3 text-[11px] text-info">
         <span className="h-3 w-px bg-hairline" />
-        scanned automatically &mdash; nobody opened it
+        scanned automatically, nobody opened it
       </div>
 
       <div className="flex items-center gap-2 rounded-lg border border-l-4 border-hairline border-l-fake bg-card px-3 py-2.5">
@@ -321,7 +321,7 @@ export function MockAutoGuard() {
 
       <div className="my-2 flex items-center gap-2 pl-3 text-[11px] text-info">
         <span className="h-3 w-px bg-hairline" />
-        guardian notified &mdash; the same second
+        guardian notified, the same second
       </div>
 
       <div className="flex items-start gap-2 rounded-lg border border-hairline bg-paper px-3 py-2.5">
@@ -331,7 +331,7 @@ export function MockAutoGuard() {
             TrustRail Trust Circle alert
           </div>
           <p className="mt-0.5 text-xs leading-relaxed text-ink">
-            This was flagged and blocked automatically &mdash; no action needed from you.
+            This was flagged and blocked automatically, no action needed from you.
           </p>
         </div>
       </div>
