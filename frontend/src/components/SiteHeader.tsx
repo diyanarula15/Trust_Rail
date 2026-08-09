@@ -19,15 +19,15 @@ import { ChevronDown, ShieldCheck } from "lucide-react";
 
 const PRIMARY = [
   { href: "/verify", label: "Verify" },
+  { href: "/supervision", label: "Supervision" },
   { href: "/trust-circle", label: "Trust Circle" },
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/log", label: "Public record" },
 ];
 
 const MORE = [
   { href: "/issuer", label: "Issuer console", hint: "How a company publishes" },
   { href: "/registry", label: "Registry", hint: "Who we can verify against" },
-  { href: "/supervision", label: "Supervision", hint: "Regulator view" },
+  { href: "/log", label: "Public record", hint: "Tamper-evident transparency log" },
   { href: "/channels", label: "Channels", hint: "WhatsApp, Telegram, SMS, email" },
 ];
 
