@@ -48,7 +48,12 @@ export default function ChannelsPage() {
       };
     } else {
       const res = await simSms(input);
-      turn = { ...turnBase, replyText: res.data?.text, error: res.error?.message };
+      turn = {
+        ...turnBase,
+        replyText: res.data?.text,
+        card: res.data?.card,
+        error: res.error?.message,
+      };
     }
 
     setHistory((h) => ({ ...h, [platform]: [...h[platform], turn] }));

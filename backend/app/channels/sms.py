@@ -104,9 +104,13 @@ def _format_reply(card: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_reply(db: Session, body: str, sender_external_id: str | None = None) -> str:
+def build_reply(db: Session, body: str, sender_external_id: str | None = None) -> tuple[str, dict]:
     """Runs the real verification pipeline and formats the real SMS reply.
-    Never sends anything itself.
+    Never sends anything itself. Returns (text, card) — mirroring
+    telegram.build_reply/whatsapp.build_reply's shape, so api/sim.py can
+    hand the full card to the frontend the same way it already does for
+    those two channels (e.g. for the Trust Circle simulation to know
+    whether this verdict would have alerted a guardian).
 
     Deliberately does NOT handle /circle pairing commands, and takes no
     rate-limit action of its own — see dispatch_direct() below for why, and
@@ -128,7 +132,7 @@ def build_reply(db: Session, body: str, sender_external_id: str | None = None) -
     text = _format_reply(card)
     if card.get("circle_alert_sent"):
         text += "\nYour family has been notified."
-    return text
+    return text, card
 
 
 def dispatch_direct(db: Session, from_number: str, body: str) -> str:
@@ -146,7 +150,8 @@ def dispatch_direct(db: Session, from_number: str, body: str) -> str:
     if circle_reply is not None:
         return circle_reply
 
-    return build_reply(db, body, sender_external_id=from_number)
+    text, _card = build_reply(db, body, sender_external_id=from_number)
+    return text
 
 
 def handle_guard_inbound(db: Session, circle: TrustCircle, body: str) -> dict:

@@ -32,7 +32,7 @@ def main() -> None:
     print(args.text)
 
     with SessionLocal() as db:
-        reply = sms.build_reply(db, args.text)
+        reply, _card = sms.build_reply(db, args.text)
 
     print("\n--- outbound reply (sim: not actually sent) ---")
     print(reply)

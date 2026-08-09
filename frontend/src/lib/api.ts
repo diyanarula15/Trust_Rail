@@ -319,6 +319,7 @@ export interface WhatsAppSimReply {
 export interface SmsSimReply {
   /** The literal SMS reply body — plain text, no markup (real SMS has none). */
   text: string;
+  card: CardPayload;
 }
 
 function channelSimForm(input: ChannelSimInput): FormData {

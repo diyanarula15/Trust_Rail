@@ -99,5 +99,5 @@ async def sim_sms(
         ingest_text(text or "")  # validated the same way every other channel's input is
     except IngestError as exc:
         return _bad(422, exc.code, exc.message)
-    reply_text = sms.build_reply(db, text or "")  # sender_external_id None — see build_reply's docstring
-    return ok({"text": reply_text})
+    reply_text, card = sms.build_reply(db, text or "")  # sender_external_id None — see build_reply's docstring
+    return ok({"text": reply_text, "card": card})
