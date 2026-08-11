@@ -30,8 +30,11 @@ def create_app() -> FastAPI:
         # Next.js dev falls through to 3001, 3002, ... whenever 3000 is
         # already taken (stale process, another project). Accept any local
         # dev port so CORS doesn't break just because the frontend landed
-        # on a different one than settings.base_url assumes.
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+        # on a different one than settings.base_url assumes. Vercel mints a
+        # fresh *.vercel.app subdomain per preview deploy in addition to the
+        # production domain (which is set explicitly via BASE_URL), so those
+        # need the same open-ended matching as localhost ports.
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+|https://[a-zA-Z0-9-]+\.vercel\.app",
         allow_methods=["*"],
         allow_headers=["*"],
     )

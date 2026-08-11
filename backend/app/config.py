@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     artifact_dir: Path = Path("var/artifacts")
     trust_dir: Path = Path("var/trust")
 
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _force_psycopg3_driver(cls, v: str) -> str:
+        # Managed Postgres add-ons (Railway, Heroku, ...) hand back a bare
+        # postgresql:// or postgres:// URL, which makes SQLAlchemy reach for
+        # psycopg2 — not installed here, only psycopg (v3) is (requirements.txt).
+        for prefix in ("postgresql://", "postgres://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
+
     @field_validator("artifact_dir", "trust_dir", mode="after")
     @classmethod
     def _anchor_to_repo_root(cls, v: Path) -> Path:
