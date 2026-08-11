@@ -15,6 +15,24 @@ export interface ApiResponse<T> {
   error: ApiError | null;
 }
 
+/** Every call below goes through this rather than a bare `fetch(...).json()`
+ * so a network failure (server down, CORS misconfig, DNS) resolves to a
+ * normal `ApiResponse` the caller already knows how to render, instead of
+ * throwing an uncaught `TypeError` that leaves the UI stuck loading. */
+async function apiFetch<T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> {
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch {
+    return { ok: false, data: null, error: { code: "network_error", message: "Could not reach the server." } };
+  }
+  try {
+    return (await res.json()) as ApiResponse<T>;
+  } catch {
+    return { ok: false, data: null, error: { code: "bad_response", message: "The server sent back something unexpected." } };
+  }
+}
+
 export interface EntityRef {
   id: string;
   name: string;
@@ -194,11 +212,10 @@ export async function verifySubmit(
   form.append("locale", input.locale ?? "en");
   form.append("channel", input.channel ?? "sim");
 
-  const res = await fetch(`${API_BASE_URL}/api/verify`, {
+  return apiFetch<CardPayload>(`${API_BASE_URL}/api/verify`, {
     method: "POST",
     body: form,
   });
-  return res.json();
 }
 
 export interface StageEvent {
@@ -244,10 +261,16 @@ export async function verifyStream(
   form.append("locale", input.locale ?? "en");
   form.append("channel", input.channel ?? "sim");
 
-  const res = await fetch(`${API_BASE_URL}/api/verify/stream`, {
-    method: "POST",
-    body: form,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/verify/stream`, {
+      method: "POST",
+      body: form,
+    });
+  } catch {
+    handlers.onError?.({ code: "network_error", message: "Could not reach the server." });
+    return;
+  }
 
   // Guard rails (rate limit, bad input) come back as a normal JSON error.
   if (!res.ok || !res.body || !res.headers.get("content-type")?.includes("event-stream")) {
@@ -333,21 +356,19 @@ function channelSimForm(input: ChannelSimInput): FormData {
 export async function simTelegram(
   input: ChannelSimInput
 ): Promise<ApiResponse<TelegramSimReply>> {
-  const res = await fetch(`${API_BASE_URL}/api/sim/telegram`, {
+  return apiFetch<TelegramSimReply>(`${API_BASE_URL}/api/sim/telegram`, {
     method: "POST",
     body: channelSimForm(input),
   });
-  return res.json();
 }
 
 export async function simWhatsapp(
   input: ChannelSimInput
 ): Promise<ApiResponse<WhatsAppSimReply>> {
-  const res = await fetch(`${API_BASE_URL}/api/sim/whatsapp`, {
+  return apiFetch<WhatsAppSimReply>(`${API_BASE_URL}/api/sim/whatsapp`, {
     method: "POST",
     body: channelSimForm(input),
   });
-  return res.json();
 }
 
 /** Text only — the SMS simulator endpoint has no `file` parameter at all
@@ -356,25 +377,33 @@ export async function simWhatsapp(
 export async function simSms(input: ChannelSimInput): Promise<ApiResponse<SmsSimReply>> {
   const form = new FormData();
   if (input.text !== undefined) form.append("text", input.text);
-  const res = await fetch(`${API_BASE_URL}/api/sim/sms`, { method: "POST", body: form });
-  return res.json();
+  return apiFetch<SmsSimReply>(`${API_BASE_URL}/api/sim/sms`, { method: "POST", body: form });
 }
 
 export async function getVerification(
   id: string,
   locale: Locale = "en"
 ): Promise<ApiResponse<CardPayload>> {
-  const res = await fetch(
+  return apiFetch<CardPayload>(
     `${API_BASE_URL}/api/verifications/${id}?locale=${locale}`
   );
-  return res.json();
 }
 
 export async function getCertificate(
   token: string
 ): Promise<{ status: number; body: ApiResponse<CertificatePayload> }> {
-  const res = await fetch(`${API_BASE_URL}/api/c/${token}`);
-  return { status: res.status, body: await res.json() };
+  try {
+    // Called from the certificate page's Server Component — Next.js caches
+    // fetch() there by default, which would silently hide the backend's
+    // single-use 410 behind a stale cached 200 on reload/revisit.
+    const res = await fetch(`${API_BASE_URL}/api/c/${token}`, { cache: "no-store" });
+    return { status: res.status, body: await res.json() };
+  } catch {
+    return {
+      status: 0,
+      body: { ok: false, data: null, error: { code: "network_error", message: "Could not reach the server." } },
+    };
+  }
 }
 
 /** One recent check, for the dashboard feed. Aggregate fields only — what a
@@ -391,8 +420,7 @@ export interface RecentCheck {
 }
 
 export async function getRecentChecks(limit = 12): Promise<ApiResponse<RecentCheck[]>> {
-  const res = await fetch(`${API_BASE_URL}/api/telemetry/recent?limit=${limit}`);
-  return res.json();
+  return apiFetch<RecentCheck[]>(`${API_BASE_URL}/api/telemetry/recent?limit=${limit}`);
 }
 
 /** How communications get into the record, and how many came from where. */
@@ -413,22 +441,19 @@ export interface IngestStatus {
 }
 
 export async function getIngestStatus(): Promise<ApiResponse<IngestStatus>> {
-  const res = await fetch(`${API_BASE_URL}/api/ingest/status`);
-  return res.json();
+  return apiFetch<IngestStatus>(`${API_BASE_URL}/api/ingest/status`);
 }
 
 export async function runIngest(): Promise<ApiResponse<{ published: number }>> {
-  const res = await fetch(`${API_BASE_URL}/api/ingest/run`, { method: "POST" });
-  return res.json();
+  return apiFetch<{ published: number }>(`${API_BASE_URL}/api/ingest/run`, { method: "POST" });
 }
 
 export async function getTelemetrySummary(
   window = "14d"
 ): Promise<ApiResponse<TelemetrySummary>> {
-  const res = await fetch(
+  return apiFetch<TelemetrySummary>(
     `${API_BASE_URL}/api/telemetry/summary?window=${window}`
   );
-  return res.json();
 }
 
 // --- Registry ---
@@ -459,13 +484,11 @@ export interface EntityDetailOut extends EntityOut {
 }
 
 export async function listEntities(): Promise<ApiResponse<EntityOut[]>> {
-  const res = await fetch(`${API_BASE_URL}/api/registry/entities`);
-  return res.json();
+  return apiFetch<EntityOut[]>(`${API_BASE_URL}/api/registry/entities`);
 }
 
 export async function getEntity(id: string): Promise<ApiResponse<EntityDetailOut>> {
-  const res = await fetch(`${API_BASE_URL}/api/registry/entities/${id}`);
-  return res.json();
+  return apiFetch<EntityDetailOut>(`${API_BASE_URL}/api/registry/entities/${id}`);
 }
 
 // --- Transparency log ---
@@ -496,18 +519,15 @@ export interface InclusionProof {
 }
 
 export async function getLogRoot(): Promise<ApiResponse<LogRoot>> {
-  const res = await fetch(`${API_BASE_URL}/api/log/root`);
-  return res.json();
+  return apiFetch<LogRoot>(`${API_BASE_URL}/api/log/root`);
 }
 
 export async function listLogEntries(limit = 50): Promise<ApiResponse<LogEntryOut[]>> {
-  const res = await fetch(`${API_BASE_URL}/api/log/entries?limit=${limit}`);
-  return res.json();
+  return apiFetch<LogEntryOut[]>(`${API_BASE_URL}/api/log/entries?limit=${limit}`);
 }
 
 export async function getInclusionProof(seq: number): Promise<ApiResponse<InclusionProof>> {
-  const res = await fetch(`${API_BASE_URL}/api/log/entries/${seq}/proof`);
-  return res.json();
+  return apiFetch<InclusionProof>(`${API_BASE_URL}/api/log/entries/${seq}/proof`);
 }
 
 // --- Issuer (demo persona via X-Demo-Persona header, no real auth) ---
@@ -531,10 +551,9 @@ function personaHeaders(personaKeyId: string): HeadersInit {
 export async function listCommunications(
   entityId: string
 ): Promise<ApiResponse<CommOut[]>> {
-  const res = await fetch(
+  return apiFetch<CommOut[]>(
     `${API_BASE_URL}/api/issuer/communications?entity_id=${entityId}`
   );
-  return res.json();
 }
 
 export async function createCommunication(input: {
@@ -553,23 +572,21 @@ export async function createCommunication(input: {
   form.append("impact", input.impact);
   if (input.file) form.append("file", input.file);
   if (input.canonicalText) form.append("canonical_text", input.canonicalText);
-  const res = await fetch(`${API_BASE_URL}/api/issuer/communications`, {
+  return apiFetch<CommOut>(`${API_BASE_URL}/api/issuer/communications`, {
     method: "POST",
     body: form,
     headers: personaHeaders(input.personaKeyId),
   });
-  return res.json();
 }
 
 export async function makerSign(
   commId: string,
   personaKeyId: string
 ): Promise<ApiResponse<CommOut>> {
-  const res = await fetch(
+  return apiFetch<CommOut>(
     `${API_BASE_URL}/api/issuer/communications/${commId}/sign`,
     { method: "POST", headers: personaHeaders(personaKeyId) }
   );
-  return res.json();
 }
 
 export interface CosignResult extends CommOut {
@@ -581,22 +598,20 @@ export async function cosignAndPublish(
   commId: string,
   personaKeyId: string
 ): Promise<ApiResponse<CosignResult>> {
-  const res = await fetch(
+  return apiFetch<CosignResult>(
     `${API_BASE_URL}/api/issuer/communications/${commId}/cosign`,
     { method: "POST", headers: personaHeaders(personaKeyId) }
   );
-  return res.json();
 }
 
 export async function revokeCommunication(
   commId: string,
   personaKeyId: string
 ): Promise<ApiResponse<CommOut & { revocation_log_seq: number }>> {
-  const res = await fetch(
+  return apiFetch<CommOut & { revocation_log_seq: number }>(
     `${API_BASE_URL}/api/issuer/communications/${commId}/revoke`,
     { method: "POST", headers: personaHeaders(personaKeyId) }
   );
-  return res.json();
 }
 
 // --- Trust Circle ---
@@ -633,7 +648,7 @@ export async function pairCircleComplete(input: {
   guardianName: string;
   guardianEmail: string;
 }): Promise<ApiResponse<{ circle_token: string }>> {
-  const res = await fetch(`${API_BASE_URL}/api/circle/pair/complete`, {
+  return apiFetch<{ circle_token: string }>(`${API_BASE_URL}/api/circle/pair/complete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -642,23 +657,20 @@ export async function pairCircleComplete(input: {
       guardian_email: input.guardianEmail,
     }),
   });
-  return res.json();
 }
 
 export async function getCircleStatus(
   circleToken: string
 ): Promise<ApiResponse<CircleStatusOut>> {
-  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}`);
-  return res.json();
+  return apiFetch<CircleStatusOut>(`${API_BASE_URL}/api/circle/${circleToken}`);
 }
 
 export async function revokeCircle(
   circleToken: string
 ): Promise<ApiResponse<{ status: string }>> {
-  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/revoke`, {
+  return apiFetch<{ status: string }>(`${API_BASE_URL}/api/circle/${circleToken}/revoke`, {
     method: "POST",
   });
-  return res.json();
 }
 
 export interface GuardTokenOut {
@@ -667,24 +679,21 @@ export interface GuardTokenOut {
 }
 
 export async function enableGuard(circleToken: string): Promise<ApiResponse<GuardTokenOut>> {
-  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/guard`, { method: "POST" });
-  return res.json();
+  return apiFetch<GuardTokenOut>(`${API_BASE_URL}/api/circle/${circleToken}/guard`, { method: "POST" });
 }
 
 export async function regenerateGuard(circleToken: string): Promise<ApiResponse<GuardTokenOut>> {
-  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/guard/regenerate`, {
+  return apiFetch<GuardTokenOut>(`${API_BASE_URL}/api/circle/${circleToken}/guard/regenerate`, {
     method: "POST",
   });
-  return res.json();
 }
 
 export async function disableGuard(
   circleToken: string
 ): Promise<ApiResponse<{ guard_enabled: boolean }>> {
-  const res = await fetch(`${API_BASE_URL}/api/circle/${circleToken}/guard/disable`, {
+  return apiFetch<{ guard_enabled: boolean }>(`${API_BASE_URL}/api/circle/${circleToken}/guard/disable`, {
     method: "POST",
   });
-  return res.json();
 }
 
 /** Fires a message at the REAL Auto-Guard webhook — not a simulator
@@ -715,10 +724,12 @@ export async function revokeKey(
 ): Promise<
   ApiResponse<{ key_id: string; status: string; revoked_at: string | null; revocation_log_seq: number }>
 > {
-  const res = await fetch(`${API_BASE_URL}/api/admin/keys/${keyId}/revoke`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason }),
-  });
-  return res.json();
+  return apiFetch<{ key_id: string; status: string; revoked_at: string | null; revocation_log_seq: number }>(
+    `${API_BASE_URL}/api/admin/keys/${keyId}/revoke`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }
+  );
 }

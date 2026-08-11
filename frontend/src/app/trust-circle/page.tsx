@@ -134,8 +134,9 @@ export default function TrustCirclePage() {
               <Card className="mx-auto max-w-md p-6">
                 <form onSubmit={submit} className="space-y-4">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-ink">6-digit code</label>
+                    <label htmlFor="tc-code" className="mb-1 block text-sm font-medium text-ink">6-digit code</label>
                     <input
+                      id="tc-code"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                       inputMode="numeric"
@@ -146,8 +147,9 @@ export default function TrustCirclePage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-ink">Your name</label>
+                    <label htmlFor="tc-name" className="mb-1 block text-sm font-medium text-ink">Your name</label>
                     <input
+                      id="tc-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
@@ -155,8 +157,9 @@ export default function TrustCirclePage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-ink">Your email</label>
+                    <label htmlFor="tc-email" className="mb-1 block text-sm font-medium text-ink">Your email</label>
                     <input
+                      id="tc-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}

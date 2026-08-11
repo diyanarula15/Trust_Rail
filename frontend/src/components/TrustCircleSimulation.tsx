@@ -276,8 +276,9 @@ export function TrustCircleSimulation() {
               </p>
               <form onSubmit={linkGuardian} className="mt-3 space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-ink">6-digit code</label>
+                  <label htmlFor="tcs-code" className="mb-1 block text-sm font-medium text-ink">6-digit code</label>
                   <input
+                    id="tcs-code"
                     value={codeInput}
                     onChange={(e) => setCodeInput(e.target.value)}
                     inputMode="numeric"
@@ -288,8 +289,9 @@ export function TrustCircleSimulation() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-ink">Your name</label>
+                  <label htmlFor="tcs-name" className="mb-1 block text-sm font-medium text-ink">Your name</label>
                   <input
+                    id="tcs-name"
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
                     required
@@ -297,8 +299,9 @@ export function TrustCircleSimulation() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-ink">Your email</label>
+                  <label htmlFor="tcs-email" className="mb-1 block text-sm font-medium text-ink">Your email</label>
                   <input
+                    id="tcs-email"
                     type="email"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
