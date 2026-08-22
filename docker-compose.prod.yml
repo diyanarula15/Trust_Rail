@@ -1,0 +1,84 @@
+# Production overlay for a single VPS: adds the backend API, the two
+# always-on channel pollers, and Caddy (automatic HTTPS via Let's Encrypt)
+# on top of the existing db/redis services in docker-compose.yml. Unlike a
+# per-service PaaS, everything here shares one filesystem, so there's no
+# cross-service disk problem and scripts.seed can just be run directly on
+# the host - see docs/SETUP_VPS.md for the full walkthrough.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Requires a real .env at the repo root (gitignored, never commit it) - copy
+# .env.example, fill in real channel credentials as you set each one up, and
+# add API_DOMAIN=api.yourdomain.com (used by Caddy below).
+
+services:
+  # Bind to localhost only - the base file's ports are 0.0.0.0, fine for a
+  # local dev machine behind no public IP, not fine on a VPS.
+  db:
+    ports:
+      - "127.0.0.1:5434:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - trustrail_var:/app/var
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  telegram-poll:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    command: python -m scripts.telegram_poll
+    volumes:
+      - trustrail_var:/app/var
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  email-poll:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    command: python -m scripts.email_poll
+    volumes:
+      - trustrail_var:/app/var
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      - API_DOMAIN=${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  trustrail_var:
+  caddy_data:
+  caddy_config:
