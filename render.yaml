@@ -1,0 +1,161 @@
+# Render Blueprint: provisions everything the backend needs to go live —
+# the API (+ Twilio SMS webhook), Postgres, a Redis-compatible key-value
+# store, and two always-on background workers for Telegram/Gmail polling.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> point at this repo. Render
+# shows exactly what will be created (and its cost) before anything is
+# provisioned. Vars marked `sync: false` are prompted for in the dashboard
+# rather than stored in this file — see docs/SETUP_TELEGRAM.md,
+# docs/SETUP_EMAIL.md, docs/SETUP_SMS.md for where each value comes from.
+#
+# Docker build context for every service below is `backend/` (rootDir), so
+# none of them can see fixtures/generated/ or assets_input/ one level up —
+# that's why scripts.seed is run once locally against the deployed database
+# instead of at container startup (see PROGRESS.md).
+#
+# Free plans exist for web services but spin down on inactivity, and
+# workers have no HTTP surface to wake them back up — every service here
+# uses `starter` so Telegram polling, Gmail polling, and the SMS webhook
+# stay live. Check Render's current pricing before applying.
+
+databases:
+  - name: trustrail-db
+    plan: starter
+    databaseName: trustrail
+    user: trustrail
+
+services:
+  - type: keyvalue
+    name: trustrail-redis
+    plan: starter
+
+  - type: web
+    name: trustrail-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /healthz
+    disk:
+      name: trustrail-data
+      mountPath: /app/var
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trustrail-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: trustrail-redis
+          type: keyvalue
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      # Your Vercel frontend URL (production domain, e.g. https://trustrail.vercel.app
+      # or your custom domain) and this API's own public URL once Render assigns it.
+      - key: BASE_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: SEBI_CHECK_URL
+        value: "#"
+      - key: DEFAULT_LOCALE
+        value: en
+      - key: LLM_ENABLED
+        value: "false"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CHANNEL_TELEGRAM_ENABLED
+        value: "true"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: CHANNEL_EMAIL_ENABLED
+        value: "true"
+      - key: EMAIL_IMAP_HOST
+        value: imap.gmail.com
+      - key: EMAIL_IMAP_PORT
+        value: "993"
+      - key: EMAIL_SMTP_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_SMTP_PORT
+        value: "587"
+      - key: EMAIL_USERNAME
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_POLL_INTERVAL_SECONDS
+        value: "30"
+      # SMS is webhook-based (Twilio calls this service directly), unlike
+      # Telegram/Gmail's polling workers below — no separate worker needed.
+      - key: CHANNEL_SMS_ENABLED
+        value: "true"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: TRUST_CIRCLE_ENABLED
+        value: "true"
+      - key: CIRCLE_PAIRING_CODE_TTL_MINUTES
+        value: "15"
+
+  - type: worker
+    name: trustrail-telegram-poll
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    # getUpdates is pull-based (docs/SETUP_TELEGRAM.md) - re-runs migrations
+    # on boot too, so this worker can start before or after trustrail-api
+    # without racing it; alembic upgrade head is a no-op once already current.
+    dockerCommand: sh -c "alembic upgrade head && python -m scripts.telegram_poll"
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trustrail-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: trustrail-redis
+          type: keyvalue
+          property: connectionString
+      - key: CHANNEL_TELEGRAM_ENABLED
+        value: "true"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+
+  - type: worker
+    name: trustrail-email-poll
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: sh -c "alembic upgrade head && python -m scripts.email_poll"
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trustrail-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: trustrail-redis
+          type: keyvalue
+          property: connectionString
+      - key: CHANNEL_EMAIL_ENABLED
+        value: "true"
+      - key: EMAIL_IMAP_HOST
+        value: imap.gmail.com
+      - key: EMAIL_IMAP_PORT
+        value: "993"
+      - key: EMAIL_SMTP_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_SMTP_PORT
+        value: "587"
+      - key: EMAIL_USERNAME
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_POLL_INTERVAL_SECONDS
+        value: "30"
