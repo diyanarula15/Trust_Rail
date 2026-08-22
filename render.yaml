@@ -28,6 +28,12 @@ services:
   - type: keyvalue
     name: trustrail-redis
     plan: starter
+    # Only reached via the generated internal connectionString (Telegram
+    # offsets + verify rate-limit counters, nothing sensitive) - no static
+    # egress IP to pin this to, so left open rather than blocking access.
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
 
   - type: web
     name: trustrail-api
